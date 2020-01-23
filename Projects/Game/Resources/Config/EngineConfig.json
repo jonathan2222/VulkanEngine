@@ -1,0 +1,18 @@
+{
+  "API": {
+    "type": "DirectX11",
+    "debug": true
+  },
+
+  "Display": {
+    "defaultWidth": 1280,
+    "defaultHeight": 720,
+    "fullscreen": false,
+    "vsync": true,
+    "title": "Yami Engine"
+  },
+
+  "ImGUI": {
+    "active": true
+  }
+}
