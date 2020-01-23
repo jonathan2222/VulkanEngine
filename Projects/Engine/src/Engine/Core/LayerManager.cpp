@@ -25,7 +25,7 @@ ym::LayerManager::~LayerManager()
 void ym::LayerManager::push(Layer* layer)
 {
 	YM_PROFILER_FUNCTION();
-	layer->init(m_app->m_api, m_app->m_input, m_app->m_display, m_app->m_renderer);
+	layer->init(m_app->m_api, m_app->m_input, m_app->m_display);
 	m_layers.push_back(layer);
 }
 

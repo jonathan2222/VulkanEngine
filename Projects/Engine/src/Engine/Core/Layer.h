@@ -7,11 +7,8 @@
 #include "API.h"
 #include "Input/Input.h"
 #include "Display.h"
-#include "Graphics/Renderer.h"
 
 #include "LayerManager.h"
-
-#include "ImGuiImpl.h"
 
 namespace ym
 {
@@ -30,18 +27,16 @@ namespace ym
 		API* getAPI();
 		Input* getInput();
 		Display* getDisplay();
-		Renderer* getRenderer();
 		LayerManager* getManager();
 
 		friend class LayerManager;
 
 	private:
-		void init(API* api, Input* input, Display* display, Renderer* renderer);
+		void init(API* api, Input* input, Display* display);
 
 		// Shared between layers.
 		API* m_api;
 		Input* m_input;
 		Display* m_display;
-		Renderer* m_renderer;
 	};
 }

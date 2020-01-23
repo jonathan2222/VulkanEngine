@@ -2,10 +2,8 @@
 #include "IApp.h"
 
 #include "API.h"
-#include "ImGuiImpl.h"
 #include "Display.h"
 #include "Input/Input.h"
-#include "Graphics/Renderer.h"
 #include "LayerManager.h"
 
 #include "Utils/Timer.h"
@@ -29,8 +27,8 @@ ym::IApp::IApp(DisplayDesc& displayDescriptor) : m_display(nullptr), m_input(nul
 	m_display = Display::create(displayDescriptor);
 	m_api->postDisplayInit();
 
-	m_renderer = Renderer::get();
-	m_renderer->init(m_display->getDescription());
+	//m_renderer = Renderer::get();
+	//m_renderer->init(m_display->getDescription());
 
 	API::VideoCardInfo& gpuInfo = m_api->getVideoCardInfo();
 	YM_LOG_INFO("GPU: {0}", gpuInfo.name.c_str());
@@ -40,25 +38,11 @@ ym::IApp::IApp(DisplayDesc& displayDescriptor) : m_display(nullptr), m_input(nul
 
 	m_layerManager = LayerManager::get();
 	m_layerManager->setApp(this);
-
-	bool activateImGUI = Config::get()->fetch<bool>("ImGUI/active");
-	if (activateImGUI)
-	{
-		m_imGuiImpl = ImGuiImpl::create();
-		m_imGuiImpl->setUp();
-		m_display->setImGuiImpl(m_imGuiImpl);
-	}
 }
 
 ym::IApp::~IApp()
 {
-	bool activateImGUI = Config::get()->fetch<bool>("ImGUI/active");
-	if (activateImGUI)
-	{
-		m_imGuiImpl->cleanUp();
-		delete m_imGuiImpl;
-	}
-	m_renderer->destroy();
+	//m_renderer->destroy();
 
 	delete m_display;
 	m_api->destroy();
@@ -115,23 +99,15 @@ void ym::IApp::run()
 		{
 			YM_PROFILER_RENDERING_SCOPE("Render");
 			// Begin frame
-			m_renderer->beginScene(0.0f, 0.0f, 0.0f, 1.0f);
+			//m_renderer->beginScene(0.0f, 0.0f, 0.0f, 1.0f);
 
 			// Render the active layer
 			m_layerManager->onRender();
 
 			// Render debug information on the active layer with ImGUI
-			if (activateImGUI)
-			{
-				YM_PROFILER_RENDERING_SCOPE("ImGUI Rendering");
-
-				m_imGuiImpl->startFrame();
-				m_layerManager->onRenderImGui();
-				m_imGuiImpl->endFrame();
-			}
 
 			// End frame
-			m_renderer->endScene();
+			//m_renderer->endScene();
 		}
 
 		dt = timer.stop();
