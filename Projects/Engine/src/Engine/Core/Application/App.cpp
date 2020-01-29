@@ -1,14 +1,13 @@
 #include "stdafx.h"
-#include "IApp.h"
+#include "App.h"
 
-#include "API.h"
-#include "Display.h"
-#include "Input/Input.h"
+#include "../Display/Display.h"
+#include "../Input/Input.h"
 #include "LayerManager.h"
 
 #include "Utils/Timer.h"
 
-ym::IApp::IApp(DisplayDesc& displayDescriptor) : m_display(nullptr), m_input(nullptr), m_imGuiImpl(nullptr)
+ym::App::App()
 {
 	YM_PROFILER_BEGIN_SESSION("Initialization", "CPU_Profiler_Initialization.json");
 
@@ -16,49 +15,42 @@ ym::IApp::IApp(DisplayDesc& displayDescriptor) : m_display(nullptr), m_input(nul
 
 	YM_LOG_INIT();
 	ym::Config::get()->init(YM_CONFIG_FILE_PATH);
-	displayDescriptor.init();
-	std::string apiType = Config::get()->fetch<std::string>("API/type");
-	YM_LOG_INFO("Using API: {0}", apiType.c_str());
+	ym::Config::get()->print();
 	
-	KeyConverter::init();
+	DisplayDesc displayDesc;
+	displayDesc.init();
 
-	m_api = API::get();
-	m_api->preDisplayInit(displayDescriptor);
-	m_display = Display::create(displayDescriptor);
-	m_api->postDisplayInit();
+	API* api = API::get();
+	api->init();
 
-	//m_renderer = Renderer::get();
-	//m_renderer->init(m_display->getDescription());
+	// Fetch the first instance of display.
+	Display* display = Display::get();
+	display->setDescription(displayDesc);
+	display->init();
 
-	API::VideoCardInfo& gpuInfo = m_api->getVideoCardInfo();
-	YM_LOG_INFO("GPU: {0}", gpuInfo.name.c_str());
+	ym::Input* input = ym::Input::get();
+	input->init();
 
-	m_input = ym::Input::create();
-	m_input->init();
-
-	m_layerManager = LayerManager::get();
-	m_layerManager->setApp(this);
+	this->layerManager = LayerManager::get();
+	this->layerManager->setApp(this);
 }
 
-ym::IApp::~IApp()
+ym::App::~App()
 {
-	//m_renderer->destroy();
-
-	delete m_display;
-	m_api->destroy();
-	delete m_input;
+	Display::get()->destroy();
+	API::get()->destroy();
 
 	YM_PROFILER_END_SESSION();
 }
 
-void ym::IApp::run()
+void ym::App::run()
 {
-	bool activateImGUI = Config::get()->fetch<bool>("ImGUI/active");
+	bool activateImGUI = Config::get()->fetch<bool>("Debuglayer/active");
 
 	start();
 
 	// Initiate layers
-	m_layerManager->onStart();
+	this->layerManager->onStart();
 
 	YM_PROFILER_END_SESSION();
 
@@ -67,10 +59,12 @@ void ym::IApp::run()
 	const unsigned long long renderingProfilingFrameCountMax = 10;
 #endif
 
+	Display* display = Display::get();
+
 	ym::Timer timer;
 	float dt = 0.16f;
 	float debugTimer = 1.0f;
-	while (!m_display->shouldClose())
+	while (!display->shouldClose())
 	{
 		// Begin rendering profiling.
 #ifdef YAMI_DEBUG
@@ -86,13 +80,13 @@ void ym::IApp::run()
 		YM_PROFILER_RENDERING_SCOPE("Frame");
 
 		timer.start();
-		m_display->pollEvents();
+		display->pollEvents();
 
 		// Update
 		{
 			YM_PROFILER_RENDERING_SCOPE("Update");
 			// Update the active layer
-			m_layerManager->onUpdate(dt);
+			this->layerManager->onUpdate(dt);
 		}
 
 		// Render
@@ -102,7 +96,7 @@ void ym::IApp::run()
 			//m_renderer->beginScene(0.0f, 0.0f, 0.0f, 1.0f);
 
 			// Render the active layer
-			m_layerManager->onRender();
+			this->layerManager->onRender();
 
 			// Render debug information on the active layer with ImGUI
 
@@ -131,10 +125,10 @@ void ym::IApp::run()
 	YM_PROFILER_BEGIN_SESSION("Quit", "CPU_Profiler_Quit.json");
 
 	// Shutdown layers
-	m_layerManager->onQuit();
+	this->layerManager->onQuit();
 }
 
-ym::LayerManager* ym::IApp::getLayerManager()
+ym::LayerManager* ym::App::getLayerManager()
 {
-	return m_layerManager;
+	return this->layerManager;
 }

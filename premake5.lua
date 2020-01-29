@@ -22,6 +22,8 @@ workspace "VulkanEngine"
 
 OUTPUT_DIR = "%{cfg.buildcfg}_%{cfg.system}_%{cfg.architecture}"
 
+VULKAN_DIR = "C:/VulkanSDK/1.1.130.0"
+
 -- ========================================== GLFW ==========================================
 
 function includeGLFW()
@@ -41,6 +43,20 @@ function linkGLFW()
 	filter "kind:not StaticLib"
 		links "glfw3"
 	filter {} -- Reset the filters for other settings.
+end
+
+-- ==============================================================================================
+
+-- =========================================== Vulkan ===========================================
+
+function includeVulkan()
+	includedirs { VULKAN_DIR .. "/Include/" }
+end
+
+function linkVulkan()
+	libdirs { VULKAN_DIR .. "/Lib/" }
+	links { "vulkan-1" }
+	filter {}
 end
 
 -- ==============================================================================================
@@ -100,8 +116,12 @@ function useEngine()
 	includeGLM()
 	includeGLFW()
 	linkGLFW()
+	includeVulkan()
+	linkVulkan()
 	includeSpdlog()
 end
+
+-- ==============================================================================================
 
 -- ========================================== PROJECTS ==========================================
 
@@ -133,6 +153,7 @@ project "Engine"
 	addFiles();
 
 	includeGLFW()
+	includeVulkan()
 	includeGLM()
 
 	useSpdlog()

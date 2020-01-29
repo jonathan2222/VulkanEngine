@@ -23,6 +23,8 @@ namespace ym
 		template<typename T>
 		T fetch(const std::string& name);
 
+		void print();
+
 	private:
 		enum ConfigType { STRING, INT, FLOAT, BOOL };
 		struct ConfigData

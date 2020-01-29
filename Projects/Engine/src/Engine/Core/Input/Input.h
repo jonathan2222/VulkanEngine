@@ -2,30 +2,38 @@
 
 #include "Keys.h"
 #include "glm/vec2.hpp"
+#include <unordered_map>
 
+struct GLFWwindow;
 namespace ym
 {
 	class Input
 	{
 	public:
 		static Input* get();
-		static Input* create();
 
 		Input() = default;
 		virtual ~Input() = default;
 
-		virtual void init() = 0;
-		virtual bool isKeyPressed(const Key& key) const = 0;
-		virtual bool isKeyReleased(const Key& key) const = 0;
+		void init();
+		bool isKeyPressed(const Key& key) const;
+		bool isKeyReleased(const Key& key) const;
 
-		virtual glm::vec2 getMousePos() const = 0;
-		virtual bool isMBPressed(const MB& button) const = 0;
-		virtual bool isMBReleased(const MB& button) const = 0;
+		glm::vec2 getMousePos() const;
+		bool isMBPressed(const MB& button) const;
+		bool isMBReleased(const MB& button) const;
 
-		virtual void lockMouse() const = 0;
-		virtual void unlockMouse() const = 0;
+		void lockMouse() const;
+		void unlockMouse() const;
 
 	private:
-		static Input* m_self;
+		static void keyCallback(GLFWwindow* wnd, int key, int scancode, int action, int mods);
+		static void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
+		static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+
+	private:
+		static std::unordered_map<Key, KeyState> s_keyMap;
+		static std::unordered_map<MB, KeyState> s_mbMap;
+		static glm::vec2 s_mousePos;
 	};
 }

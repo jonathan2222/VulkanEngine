@@ -5,7 +5,7 @@
 namespace ym
 {
 	class API;
-	class IApp;
+	class App;
 	class Layer;
 	class LayerManager
 	{
@@ -13,7 +13,7 @@ namespace ym
 		LayerManager() = default;
 		static LayerManager* get();
 
-		void setApp(IApp* app);
+		void setApp(App* app);
 
 		// Push a new layer as the new active layer.
 		void push(Layer* layer);
@@ -35,7 +35,7 @@ namespace ym
 	private:
 		virtual ~LayerManager();
 
-		std::vector<Layer*> m_layers;
-		IApp* m_app;
+		std::vector<Layer*> layers;
+		App* appPtr;
 	};
 }

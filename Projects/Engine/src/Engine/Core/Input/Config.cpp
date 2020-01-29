@@ -17,6 +17,23 @@ void ym::Config::init(const std::string& fileName)
 	readFile(fileName);
 }
 
+void ym::Config::print()
+{
+	for (auto e : m_map)
+	{
+		std::string type;
+		switch (e.second.type)
+		{
+		case STRING: type = std::string(e.second.str); break;
+		case INT: type = std::to_string(e.second.i); break;
+		case FLOAT: type = std::to_string(e.second.f); break;
+		case BOOL:
+		default: type = e.second.b ? "True" : "False"; break;
+		}
+		YM_LOG_INFO("[{0}] -> [{1}]", e.first.c_str(), type);
+	}
+}
+
 void ym::Config::readFile(const std::string& fileName)
 {
 	YM_PROFILER_FUNCTION();

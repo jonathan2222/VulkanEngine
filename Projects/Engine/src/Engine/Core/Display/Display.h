@@ -2,7 +2,7 @@
 
 #include <string>
 
-struct GLFWwindow;
+#include "../API.h"
 
 namespace ym
 {
@@ -25,40 +25,35 @@ namespace ym
 		void copy(const DisplayDesc& other);
 	};
 
-	class ImGuiImpl;
 	class Display
 	{
 	public:
 		static Display* get();
 
-		/*
-			Creates the display. This is implemented in another class.
-		*/
-		static Display* create(const DisplayDesc& description);
-		virtual ~Display() = default;
+		virtual ~Display();
+
+		void init();
+		void destroy();
 
 		void setDescription(const DisplayDesc& description);
 		DisplayDesc& getDescription();
 
-		virtual bool shouldClose() const noexcept = 0;
-		virtual void close() noexcept = 0;
+		bool shouldClose() const;
+		void close() noexcept;
 
-		virtual void pollEvents() noexcept = 0;
+		void pollEvents();
 
-		virtual void* getNativeDisplay() = 0;
+		void* getNativeDisplay();
 
 		int getWidth() const;
 		int getHeight() const;
 		float getAspectRatio() const;
 
-		void setImGuiImpl(ImGuiImpl* imGuiImpl);
-		ym::ImGuiImpl* getImGuiImpl();
-
-	protected:
-		DisplayDesc m_description;
-
 	private:
-		ym::ImGuiImpl* m_imGuiImpl = nullptr;
-		static Display* m_self;
+		static void frameBufferSizeCallback(GLFWwindow* window, int width, int height);
+
+		bool shouldCloseV;
+		GLFWwindow* window;
+		DisplayDesc description;
 	};
 };

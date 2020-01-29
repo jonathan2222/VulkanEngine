@@ -2,7 +2,7 @@
 #include "Camera.h"
 
 #include <glm/gtx/transform.hpp>
-#include "Display.h"
+#include "Display/Display.h"
 
 ym::Camera::Camera(const glm::vec3& pos, const glm::vec3& dir, const glm::vec3& up, float nearPlane, float farPlane, float fov) :
 	m_pos(pos), m_dir(dir), m_up(up), m_nearPlane(nearPlane), m_farPlane(farPlane), m_fov(fov), m_proj(1.0), m_view(1.0)

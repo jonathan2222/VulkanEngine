@@ -7,7 +7,7 @@
 
 // Code from: https://www.youtube.com/watch?v=xlAH4dbMVnU
 
-#ifdef YAMI_DEBUG
+#ifdef YM_DEBUG
 	#define YM_PROFILER_BEGIN_SESSION(name, fileName) Instrumentation::get().beginSession(name, fileName)
 	#define YM_PROFILER_END_SESSION() Instrumentation::get().endSession()
 	#define YM_PROFILER_SCOPE(name) InstrumentationTimer instrumentationTimer##__LINE__(name)

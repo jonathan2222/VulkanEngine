@@ -2,17 +2,18 @@
 
 #include <string>
 
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
 namespace ym
 {
-	struct DisplayDesc;
 	class API
 	{
 	public:
 		static API* get();
 
-		virtual void preDisplayInit(DisplayDesc& displayDescriptor) = 0;
-		virtual void postDisplayInit() = 0;
-		virtual void destroy() = 0;
+		void init();
+		void destroy();
 
 		struct VideoCardInfo
 		{
@@ -25,6 +26,6 @@ namespace ym
 		VideoCardInfo& getVideoCardInfo();
 
 	private:
-		VideoCardInfo m_videoCardinfo;
+		VideoCardInfo videoCardinfo;
 	};
 }

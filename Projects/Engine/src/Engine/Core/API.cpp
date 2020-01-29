@@ -3,12 +3,25 @@
 
 ym::API* ym::API::get()
 {
-	static std::string type = Config::get()->fetch<std::string>("API/type");
-	YM_ASSERT(false, "Could not fetch API: API not supported!");
-	return nullptr;
+	static API api;
+	return &api;
+}
+
+void ym::API::init()
+{
+	// Initialize glfw.
+	glfwInit();
+	// Tell glfw to not create an OpenGL context.
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+}
+
+void ym::API::destroy()
+{
+	// Destroy glfw.
+	glfwTerminate();
 }
 
 ym::API::VideoCardInfo& ym::API::getVideoCardInfo()
 {
-	return m_videoCardinfo;
+	return this->videoCardinfo;
 }

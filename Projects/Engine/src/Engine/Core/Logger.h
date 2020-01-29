@@ -7,7 +7,7 @@
 #include "spdlog/spdlog.h"
 #pragma warning( pop )
 
-#ifdef YAMI_DEBUG
+#ifdef YM_DEBUG
 	#define YM_LOG_INIT() \
 		spdlog::set_level(spdlog::level::info); \
 		spdlog::set_pattern("[%H:%M:%S.%e] [%^%l%$] [%s:%#] %v")

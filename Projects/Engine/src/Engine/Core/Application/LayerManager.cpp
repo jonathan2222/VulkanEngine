@@ -2,7 +2,7 @@
 #include "LayerManager.h"
 
 #include "Layer.h"
-#include "IApp.h"
+#include "App.h"
 
 ym::LayerManager* ym::LayerManager::get()
 {
@@ -10,37 +10,36 @@ ym::LayerManager* ym::LayerManager::get()
 	return &manager;
 }
 
-void ym::LayerManager::setApp(IApp* app)
+void ym::LayerManager::setApp(App* app)
 {
-	m_app = app;
+	this->appPtr = app;
 }
 
 ym::LayerManager::~LayerManager()
 {
-	for (Layer*& layer : m_layers)
+	for (Layer*& layer : this->layers)
 		delete layer;
-	m_layers.clear();
+	this->layers.clear();
 }
 
 void ym::LayerManager::push(Layer* layer)
 {
 	YM_PROFILER_FUNCTION();
-	layer->init(m_app->m_api, m_app->m_input, m_app->m_display);
-	m_layers.push_back(layer);
+	this->layers.push_back(layer);
 }
 
 void ym::LayerManager::pop()
 {
 	YM_PROFILER_FUNCTION();
-	Layer* layer = m_layers.back();
+	Layer* layer = this->layers.back();
 	layer->onQuit();
 	delete layer;
-	m_layers.pop_back();
+	this->layers.pop_back();
 }
 
 void ym::LayerManager::onStart()
 {
-	for (Layer*& layer : m_layers)
+	for (Layer*& layer : this->layers)
 		layer->onStart();
 }
 
@@ -48,25 +47,25 @@ void ym::LayerManager::onUpdate(float dt)
 {
 	YM_PROFILER_RENDERING_FUNCTION();
 	// Update the active layer
-	m_layers.back()->onUpdate(dt);
+	this->layers.back()->onUpdate(dt);
 }
 
 void ym::LayerManager::onRender()
 {
 	YM_PROFILER_RENDERING_FUNCTION();
 	// Render the active layer
-	m_layers.back()->onRender();
+	this->layers.back()->onRender();
 }
 
 void ym::LayerManager::onRenderImGui()
 {
 	YM_PROFILER_RENDERING_FUNCTION();
 	// Render imGui on the active layer
-	m_layers.back()->onRenderImGui();
+	this->layers.back()->onRenderImGui();
 }
 
 void ym::LayerManager::onQuit()
 {
-	for (Layer*& layer : m_layers)
+	for (Layer*& layer : this->layers)
 		layer->onQuit();
 }
