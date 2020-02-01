@@ -19,7 +19,7 @@ void ym::Input::init()
 {
 	YM_PROFILER_FUNCTION();
 
-	GLFWwindow* wnd = static_cast<GLFWwindow*>(Display::get()->getNativeDisplay());
+	GLFWwindow* wnd = static_cast<GLFWwindow*>(Display::get()->getWindowPtr());
 	glfwSetKeyCallback(wnd, Input::keyCallback);
 	glfwSetCursorPosCallback(wnd, Input::cursorPositionCallback);
 	glfwSetMouseButtonCallback(wnd, Input::mouseButtonCallback);
@@ -58,13 +58,13 @@ bool ym::Input::isMBReleased(const MB& button) const
 
 void ym::Input::lockMouse() const
 {
-	GLFWwindow* wnd = static_cast<GLFWwindow*>(Display::get()->getNativeDisplay());
+	GLFWwindow* wnd = static_cast<GLFWwindow*>(Display::get()->getWindowPtr());
 	glfwSetInputMode(wnd, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
 void ym::Input::unlockMouse() const
 {
-	GLFWwindow* wnd = static_cast<GLFWwindow*>(Display::get()->getNativeDisplay());
+	GLFWwindow* wnd = static_cast<GLFWwindow*>(Display::get()->getWindowPtr());
 	glfwSetInputMode(wnd, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 }
 

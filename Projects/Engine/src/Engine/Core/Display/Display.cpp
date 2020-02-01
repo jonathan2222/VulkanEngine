@@ -56,6 +56,7 @@ void ym::Display::init()
 		this->description.height = mode->height;
 	}
 
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	this->window = glfwCreateWindow(this->description.width, this->description.height, this->description.title.c_str(), monitor, nullptr);
 	glfwMakeContextCurrent(this->window);
 	//glfwSetFramebufferSizeCallback(m_window, GLDisplay::frameBufferSizeCallback);
@@ -93,7 +94,7 @@ void ym::Display::pollEvents()
 	glfwPollEvents();
 }
 
-void* ym::Display::getNativeDisplay()
+GLFWwindow* ym::Display::getWindowPtr()
 {
 	return this->window;
 }

@@ -43,7 +43,7 @@ namespace ym
 
 		void pollEvents();
 
-		void* getNativeDisplay();
+		GLFWwindow* getWindowPtr();
 
 		int getWidth() const;
 		int getHeight() const;

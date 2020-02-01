@@ -5,6 +5,8 @@
 #include "../Input/Input.h"
 #include "LayerManager.h"
 
+#include "../Graphics/VulkanInstance.h"
+
 #include "Utils/Timer.h"
 
 ym::App::App()
@@ -28,15 +30,22 @@ ym::App::App()
 	display->setDescription(displayDesc);
 	display->init();
 
-	ym::Input* input = ym::Input::get();
+	// Initialize the input manager.
+	Input* input = Input::get();
 	input->init();
 
+	// Initialize the vulkan instance.
+	VulkanInstance* instance = VulkanInstance::get();
+	instance->init({}, {});
+
+	// Create the layer manager.
 	this->layerManager = LayerManager::get();
 	this->layerManager->setApp(this);
 }
 
 ym::App::~App()
 {
+	VulkanInstance::get()->destroy();
 	Display::get()->destroy();
 	API::get()->destroy();
 
