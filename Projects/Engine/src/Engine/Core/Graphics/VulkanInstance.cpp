@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "VulkanInstance.h"
 
+#include <set>
+
 #include "GLFW/glfw3.h"
 #include "../Input/Config.h"
 #include "../Display/Display.h"
@@ -24,29 +26,85 @@ ym::VulkanInstance* ym::VulkanInstance::get()
 	return &instance;
 }
 
-void ym::VulkanInstance::init(std::vector<const char*> additionalDeviceExtensions, std::vector<const char*> additionalValidationLayers)
+void ym::VulkanInstance::init()
 {
 	this->enableValidationLayers = Config::get()->fetch<bool>("Debuglayer/active");
-	createInstance();
+
+	std::vector<const char*> additionalInstanceExtensions = {};
+	createInstance(additionalInstanceExtensions);
 	createSurface();
+	pickPhysicalDevice();
+
+	// Create the logical device.
+	VkPhysicalDeviceFeatures deviceFeatures = {};
+	deviceFeatures.samplerAnisotropy = VK_TRUE;
+	deviceFeatures.fillModeNonSolid = VK_TRUE;
+	createLogicalDevice(deviceFeatures);
 }
 
 void ym::VulkanInstance::destroy()
 {
-	vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
+	// Destroy the logical device.
+	vkDestroyDevice(this->logicalDevice, nullptr);
+	this->logicalDevice = VK_NULL_HANDLE;
 
+	// Destroy the surface.
+	vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
+	this->surface = VK_NULL_HANDLE;
+
+	// Destroy the debug messenger.
 	if(this->enableValidationLayers)
 		DestroyDebugUtilsMessengerEXT(this->instance, debugMessenger, nullptr);
+	this->debugMessenger = VK_NULL_HANDLE;
 
+	// Destroy the instance.
 	vkDestroyInstance(this->instance, nullptr);
+	this->instance = VK_NULL_HANDLE;
+}
+
+VkInstance ym::VulkanInstance::getInstance()
+{
+	return this->instance;
+}
+
+VkSurfaceKHR ym::VulkanInstance::getSurface()
+{
+	return this->surface;
+}
+
+VkPhysicalDevice ym::VulkanInstance::getPhysicalDevice()
+{
+	return this->physicalDevice;
+}
+
+VkDevice ym::VulkanInstance::getLogicalDevice()
+{
+	return this->logicalDevice;
+}
+
+VkQueue ym::VulkanInstance::getPresentQueue()
+{
+	return this->presentQueue;
+}
+
+VkQueue ym::VulkanInstance::getGraphicsQueue()
+{
+	return this->graphicsQueue;
 }
 
 ym::VulkanInstance::VulkanInstance()
 {
 	this->enableValidationLayers = false;
+	this->instance = VK_NULL_HANDLE;
+	this->debugMessenger = VK_NULL_HANDLE;
+	this->surface = VK_NULL_HANDLE;
+	this->physicalDevice = VK_NULL_HANDLE;
+	this->logicalDevice = VK_NULL_HANDLE;
+	this->graphicsQueue = VK_NULL_HANDLE;
+	this->presentQueue = VK_NULL_HANDLE;
 }
 
-void ym::VulkanInstance::createInstance()
+void ym::VulkanInstance::createInstance(std::vector<const char*> additionalInstanceExtensions)
 {
 	VkApplicationInfo appInfo = {};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -57,7 +115,7 @@ void ym::VulkanInstance::createInstance()
 	appInfo.apiVersion = VK_API_VERSION_1_0;
 
 	// Fetch extensions
-	std::vector<const char*> extensionNames = getRequiredExtensions({});
+	std::vector<const char*> extensionNames = getRequiredExtensions(additionalInstanceExtensions);
 
 	// Check validation layer support
 	if (!checkValidationLayerSupport(this->validationLayers)) {
@@ -75,8 +133,8 @@ void ym::VulkanInstance::createInstance()
 	info.ppEnabledExtensionNames = extensionNames.data();
 	if (this->enableValidationLayers)
 	{
-		info.enabledLayerCount = validationLayers.size();
-		info.ppEnabledLayerNames = validationLayers.data();
+		info.enabledLayerCount = static_cast<uint32_t>(this->validationLayers.size());
+		info.ppEnabledLayerNames = static_cast<const char* const*>(this->validationLayers.data());
 
 		populateDebugMessengerCreateInfo(debugInfo);
 		info.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)& debugInfo;
@@ -98,7 +156,7 @@ void ym::VulkanInstance::createInstance()
 	YM_ASSERT(result == VK_SUCCESS, "Failed to set up debug messenger!");
 }
 
-std::vector<const char*> ym::VulkanInstance::getRequiredExtensions(std::vector<const char*> additionalExtensions)
+std::vector<const char*> ym::VulkanInstance::getRequiredExtensions(std::vector<const char*> additionalInstanceExtensions)
 {
 	// Fetch standard extensions.
 	uint32_t glfwExtensionCount = 0;
@@ -112,9 +170,207 @@ std::vector<const char*> ym::VulkanInstance::getRequiredExtensions(std::vector<c
 	}
 
 	// Add additional extensions
-	extensions.insert(extensions.end(), additionalExtensions.begin(), additionalExtensions.end());
+	extensions.insert(extensions.end(), additionalInstanceExtensions.begin(), additionalInstanceExtensions.end());
 
 	return extensions;
+}
+
+void ym::VulkanInstance::createSurface()
+{
+	VkResult result = glfwCreateWindowSurface(this->instance, Display::get()->getWindowPtr(), nullptr, &this->surface);
+	YM_ASSERT(result == VK_SUCCESS, "Failed to create window surface!");
+}
+
+void ym::VulkanInstance::pickPhysicalDevice()
+{
+	// Get the number of connected physical devices.
+	uint32_t deviceCount = 0;
+	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+	YM_ASSERT(deviceCount != 0, "Failed to find GPUs with Vulkan support!");
+
+	// Fetch all connected physical devices.
+	std::vector<VkPhysicalDevice> devices(deviceCount);
+	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+	// Calculate the score for each physical device and choose the one with the highest score.
+	int score = 0;
+	for (const auto& device : devices) {
+		int newScore = calculateDeviceSuitability(device);
+		if (newScore > score) {
+			physicalDevice = device;
+			score = newScore;
+		}
+	}
+
+	// Assert if no suitable physical device was found.
+	YM_ASSERT(score != 0, "There is no suitable physical device!");
+	YM_ASSERT(physicalDevice != VK_NULL_HANDLE, "Failed to find a suitable GPU!"); // This should never happen because of the previous assert.
+}
+
+int ym::VulkanInstance::calculateDeviceSuitability(VkPhysicalDevice device)
+{
+	VkPhysicalDeviceProperties deviceProperties;
+	VkPhysicalDeviceFeatures deviceFeatures;
+	vkGetPhysicalDeviceProperties(device, &deviceProperties);
+	vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+	// Exit if device is not suitable.
+	if (!isDeviceSuitable(device, deviceFeatures))
+		return 0;
+
+	// Discrete GPUs have a significant performance advantage
+	int score = 0;
+	if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+		score += 1000;
+	}
+
+	// Maximum possible size of textures affects graphics quality
+	score += deviceProperties.limits.maxImageDimension2D;
+
+	YM_LOG_INFO("Using device: {0}", deviceProperties.deviceName);
+
+	return score;
+}
+
+bool ym::VulkanInstance::isDeviceSuitable(VkPhysicalDevice device, VkPhysicalDeviceFeatures& deviceFeatures)
+{
+	QueueFamilyIndices index = findQueueFamilies(device);
+	bool extensionsSupported = checkDeviceExtensionSupport(device);
+	bool swapChainAdequate = false;
+
+	if (extensionsSupported) {
+		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+		swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+	}
+
+	// The device is suitable if it supports the queue families, extensions, swap chain extent and anisotropic filtering.
+	return index.isComplete() && extensionsSupported && swapChainAdequate && deviceFeatures.samplerAnisotropy;
+}
+
+void ym::VulkanInstance::createLogicalDevice(VkPhysicalDeviceFeatures deviceFeatures)
+{
+	QueueFamilyIndices indices = findQueueFamilies(this->physicalDevice);
+
+	// Construct a set to hold the unique queue families (This will hold one queue family if both are the same).
+	std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+
+	// Create the definition of the queue families which will be used.
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+	float queuePriority = 1.0f;  // We want the highest priority for both the queues.
+	for (uint32_t queueFamily : uniqueQueueFamilies) {
+		VkDeviceQueueCreateInfo queueCreateInfo = {};
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = queueFamily;
+		queueCreateInfo.queueCount = 1;
+		queueCreateInfo.pQueuePriorities = &queuePriority;
+		queueCreateInfos.push_back(queueCreateInfo);
+	}
+
+	VkDeviceCreateInfo createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+	createInfo.pQueueCreateInfos = queueCreateInfos.data();
+	createInfo.pEnabledFeatures = &deviceFeatures;
+
+	createInfo.enabledExtensionCount = static_cast<uint32_t>(this->deviceExtensions.size());
+	createInfo.ppEnabledExtensionNames = this->deviceExtensions.data();
+
+	createInfo.enabledLayerCount = static_cast<uint32_t>(this->validationLayers.size());
+	createInfo.ppEnabledLayerNames = this->validationLayers.data();
+
+
+	// Create the logical device
+	if (vkCreateDevice(this->physicalDevice, &createInfo, nullptr, &this->logicalDevice) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create logical device!");
+	}
+
+	// Fetch the queues.
+	vkGetDeviceQueue(this->logicalDevice, indices.graphicsFamily.value(), 0, &this->graphicsQueue);
+	vkGetDeviceQueue(this->logicalDevice, indices.presentFamily.value(), 0, &this->presentQueue);
+}
+
+ym::VulkanInstance::SwapChainSupportDetails ym::VulkanInstance::querySwapChainSupport(VkPhysicalDevice device)
+{
+	SwapChainSupportDetails details = {};
+
+	// Fetch the surface capabilities.
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+
+	// Get the number of surface formats.
+	uint32_t formatCount;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+
+	// Fetch all surface formats.
+	if (formatCount != 0) {
+		details.formats.resize(formatCount);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+	}
+
+	// Get the number of surface present modes.
+	uint32_t presentModeCount;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+
+	// Fetch all the surface present modes.
+	if (presentModeCount != 0) {
+		details.presentModes.resize(presentModeCount);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+	}
+
+	return details;
+}
+
+ym::VulkanInstance::QueueFamilyIndices ym::VulkanInstance::findQueueFamilies(VkPhysicalDevice device)
+{
+	QueueFamilyIndices indices;
+
+	// Get the number of queue families.
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+	// Fetch all queue families.
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+	// Save the index of the queue family which can present images and one that can do graphics.
+	for (int i = 0; i < (int)queueFamilies.size(); i++)
+	{
+		const auto& queueFamily = queueFamilies[i];
+
+		VkBool32 presentSupport = false;
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, this->surface, &presentSupport);
+
+		// Queue can present images
+		if (presentSupport) {
+			indices.presentFamily = i;
+		}
+
+		// Queue can do graphics
+		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			indices.graphicsFamily = i;
+		}
+	}
+
+	// Logic to find queue family indices to populate struct with
+	return indices;
+}
+
+bool ym::VulkanInstance::checkDeviceExtensionSupport(VkPhysicalDevice device)
+{
+	// Get the number of extensions.
+	uint32_t extensionCount;
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+	// Fetch all extensions.
+	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+	// Check if all the specified extensions are available.
+	std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+	for (const auto& extension : availableExtensions) {
+		requiredExtensions.erase(extension.extensionName);
+	}
+
+	return requiredExtensions.empty();
 }
 
 bool ym::VulkanInstance::checkValidationLayerSupport(const std::vector<const char*>& validationLayers)
@@ -142,12 +398,6 @@ bool ym::VulkanInstance::checkValidationLayerSupport(const std::vector<const cha
 
 	// Only return true if all layers are supported.
 	return true;
-}
-
-void ym::VulkanInstance::createSurface()
-{
-	VkResult result = glfwCreateWindowSurface(this->instance, Display::get()->getWindowPtr(), nullptr, &this->surface);
-	YM_ASSERT(result == VK_SUCCESS, "Failed to create window surface!");
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL ym::VulkanInstance::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)

@@ -36,7 +36,7 @@ ym::App::App()
 
 	// Initialize the vulkan instance.
 	VulkanInstance* instance = VulkanInstance::get();
-	instance->init({}, {});
+	instance->init();
 
 	// Create the layer manager.
 	this->layerManager = LayerManager::get();
