@@ -92,6 +92,16 @@ VkQueue ym::VulkanInstance::getGraphicsQueue()
 	return this->graphicsQueue;
 }
 
+ym::VulkanInstance::SwapChainSupportDetails ym::VulkanInstance::getSwapChainSupportDetails()
+{
+	return querySwapChainSupport(this->physicalDevice);
+}
+
+ym::VulkanInstance::QueueFamilyIndices ym::VulkanInstance::getQueueFamilies()
+{
+	return findQueueFamilies(this->physicalDevice);
+}
+
 ym::VulkanInstance::VulkanInstance()
 {
 	this->enableValidationLayers = false;
@@ -275,6 +285,7 @@ void ym::VulkanInstance::createLogicalDevice(VkPhysicalDeviceFeatures deviceFeat
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(this->deviceExtensions.size());
 	createInfo.ppEnabledExtensionNames = this->deviceExtensions.data();
 
+	// These are ignored by newer versions of vulkan. The logical device share validation layers with the instance.
 	createInfo.enabledLayerCount = static_cast<uint32_t>(this->validationLayers.size());
 	createInfo.ppEnabledLayerNames = this->validationLayers.data();
 

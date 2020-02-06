@@ -9,6 +9,22 @@ namespace ym
 	class VulkanInstance
 	{
 	public:
+		struct SwapChainSupportDetails {
+			SwapChainSupportDetails(SwapChainSupportDetails& other) = default;
+			VkSurfaceCapabilitiesKHR capabilities;
+			std::vector<VkSurfaceFormatKHR> formats;
+			std::vector<VkPresentModeKHR> presentModes;
+		};
+
+		struct QueueFamilyIndices {
+			std::optional<unsigned> graphicsFamily;
+			std::optional<uint32_t> presentFamily;
+
+			bool isComplete() {
+				return graphicsFamily.has_value() && presentFamily.has_value();
+			}
+		};
+
 		virtual ~VulkanInstance();
 
 		// Get the instance of the class Instance.
@@ -26,23 +42,10 @@ namespace ym
 		VkQueue getPresentQueue();
 		VkQueue getGraphicsQueue();
 
+		SwapChainSupportDetails getSwapChainSupportDetails();
+		QueueFamilyIndices getQueueFamilies();
+
 	private:
-		struct QueueFamilyIndices {
-			std::optional<unsigned> graphicsFamily;
-			std::optional<uint32_t> presentFamily;
-
-			bool isComplete() {
-				return graphicsFamily.has_value() && presentFamily.has_value();
-			}
-		};
-
-		struct SwapChainSupportDetails {
-			SwapChainSupportDetails(SwapChainSupportDetails& other) = default;
-			VkSurfaceCapabilitiesKHR capabilities;
-			std::vector<VkSurfaceFormatKHR> formats;
-			std::vector<VkPresentModeKHR> presentModes;
-		};
-
 		VulkanInstance();
 
 		void createInstance(std::vector<const char*> additionalInstanceExtensions);
@@ -70,8 +73,7 @@ namespace ym
 		void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 		void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& debugInfo);
 
-		// -------------------------------------------- Member variables --------------------------------------------
-
+	private:
 		static std::vector<const char*> deviceExtensions;
 		
 		bool enableValidationLayers;

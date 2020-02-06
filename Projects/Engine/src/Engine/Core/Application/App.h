@@ -4,6 +4,7 @@
 
 #include "Layer.h"
 #include <vector>
+#include "../Graphics/Renderer.h"
 
 int main(int argc, char* argv[]);
 
@@ -25,6 +26,7 @@ namespace ym
 
 	protected:
 		ym::LayerManager* layerManager;
+		Renderer renderer;
 	};
 
 	// The user should define this!

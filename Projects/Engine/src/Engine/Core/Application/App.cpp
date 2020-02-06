@@ -34,9 +34,8 @@ ym::App::App()
 	Input* input = Input::get();
 	input->init();
 
-	// Initialize the vulkan instance.
-	VulkanInstance* instance = VulkanInstance::get();
-	instance->init();
+	// Initialize the vulkan renderer.
+	this->renderer.init();
 
 	// Create the layer manager.
 	this->layerManager = LayerManager::get();
@@ -45,7 +44,7 @@ ym::App::App()
 
 ym::App::~App()
 {
-	VulkanInstance::get()->destroy();
+	this->renderer.destroy();
 	Display::get()->destroy();
 	API::get()->destroy();
 
@@ -63,7 +62,7 @@ void ym::App::run()
 
 	YM_PROFILER_END_SESSION();
 
-#ifdef YAMI_DEBUG
+#ifdef YM_DEBUG
 	unsigned long long renderingProfilingFrameCounter = 0;
 	const unsigned long long renderingProfilingFrameCountMax = 10;
 #endif
@@ -76,7 +75,7 @@ void ym::App::run()
 	while (!display->shouldClose())
 	{
 		// Begin rendering profiling.
-#ifdef YAMI_DEBUG
+#ifdef YM_DEBUG
 		if (ym::Input::get()->isKeyPressed(ym::Key::P))
 		{
 			if(ym::Instrumentation::g_runRenderingProfiling == false)
@@ -121,7 +120,7 @@ void ym::App::run()
 			YM_LOG_INFO("dt: {0:.2f} ms (FPS: {1:.2f})", dt * 1000.f, 1.0f / dt);
 		}
 
-#ifdef YAMI_DEBUG
+#ifdef YM_DEBUG
 		renderingProfilingFrameCounter++;
 		if (renderingProfilingFrameCounter >= renderingProfilingFrameCountMax)
 		{
