@@ -82,24 +82,14 @@ VkDevice ym::VulkanInstance::getLogicalDevice()
 	return this->logicalDevice;
 }
 
-VkQueue ym::VulkanInstance::getPresentQueue()
+ym::SwapChainSupportDetails ym::VulkanInstance::getSwapChainSupportDetails()
 {
-	return this->presentQueue;
+	return querySwapChainSupport(this->physicalDevice, this->surface);
 }
 
-VkQueue ym::VulkanInstance::getGraphicsQueue()
+ym::QueueFamilyIndices ym::VulkanInstance::getQueueFamilies()
 {
-	return this->graphicsQueue;
-}
-
-ym::VulkanInstance::SwapChainSupportDetails ym::VulkanInstance::getSwapChainSupportDetails()
-{
-	return querySwapChainSupport(this->physicalDevice);
-}
-
-ym::VulkanInstance::QueueFamilyIndices ym::VulkanInstance::getQueueFamilies()
-{
-	return findQueueFamilies(this->physicalDevice);
+	return findQueueFamilies(this->physicalDevice, this->surface);
 }
 
 ym::VulkanInstance::VulkanInstance()
@@ -110,8 +100,6 @@ ym::VulkanInstance::VulkanInstance()
 	this->surface = VK_NULL_HANDLE;
 	this->physicalDevice = VK_NULL_HANDLE;
 	this->logicalDevice = VK_NULL_HANDLE;
-	this->graphicsQueue = VK_NULL_HANDLE;
-	this->presentQueue = VK_NULL_HANDLE;
 }
 
 void ym::VulkanInstance::createInstance(std::vector<const char*> additionalInstanceExtensions)
@@ -244,12 +232,12 @@ int ym::VulkanInstance::calculateDeviceSuitability(VkPhysicalDevice device)
 
 bool ym::VulkanInstance::isDeviceSuitable(VkPhysicalDevice device, VkPhysicalDeviceFeatures& deviceFeatures)
 {
-	QueueFamilyIndices index = findQueueFamilies(device);
+	QueueFamilyIndices index = findQueueFamilies(device, this->surface);
 	bool extensionsSupported = checkDeviceExtensionSupport(device);
 	bool swapChainAdequate = false;
 
 	if (extensionsSupported) {
-		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device, this->surface);
 		swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
 	}
 
@@ -259,10 +247,15 @@ bool ym::VulkanInstance::isDeviceSuitable(VkPhysicalDevice device, VkPhysicalDev
 
 void ym::VulkanInstance::createLogicalDevice(VkPhysicalDeviceFeatures deviceFeatures)
 {
-	QueueFamilyIndices indices = findQueueFamilies(this->physicalDevice);
+	QueueFamilyIndices indices = findQueueFamilies(this->physicalDevice, this->surface);
+	this->graphicsQueue.queueIndex = indices.graphicsFamily.value();
+	this->presentQueue.queueIndex = indices.presentFamily.value();
+	this->transferQueue.queueIndex = findQueueIndex(VK_QUEUE_TRANSFER_BIT, this->physicalDevice);
+	this->computeQueue.queueIndex = findQueueIndex(VK_QUEUE_COMPUTE_BIT, this->physicalDevice);
 
 	// Construct a set to hold the unique queue families (This will hold one queue family if both are the same).
-	std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+	std::set<uint32_t> uniqueQueueFamilies = { this->graphicsQueue.queueIndex, this->presentQueue.queueIndex, 
+		this->transferQueue.queueIndex, this->computeQueue.queueIndex };
 
 	// Create the definition of the queue families which will be used.
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -296,73 +289,10 @@ void ym::VulkanInstance::createLogicalDevice(VkPhysicalDeviceFeatures deviceFeat
 	}
 
 	// Fetch the queues.
-	vkGetDeviceQueue(this->logicalDevice, indices.graphicsFamily.value(), 0, &this->graphicsQueue);
-	vkGetDeviceQueue(this->logicalDevice, indices.presentFamily.value(), 0, &this->presentQueue);
-}
-
-ym::VulkanInstance::SwapChainSupportDetails ym::VulkanInstance::querySwapChainSupport(VkPhysicalDevice device)
-{
-	SwapChainSupportDetails details = {};
-
-	// Fetch the surface capabilities.
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
-
-	// Get the number of surface formats.
-	uint32_t formatCount;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
-
-	// Fetch all surface formats.
-	if (formatCount != 0) {
-		details.formats.resize(formatCount);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
-	}
-
-	// Get the number of surface present modes.
-	uint32_t presentModeCount;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
-
-	// Fetch all the surface present modes.
-	if (presentModeCount != 0) {
-		details.presentModes.resize(presentModeCount);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
-	}
-
-	return details;
-}
-
-ym::VulkanInstance::QueueFamilyIndices ym::VulkanInstance::findQueueFamilies(VkPhysicalDevice device)
-{
-	QueueFamilyIndices indices;
-
-	// Get the number of queue families.
-	uint32_t queueFamilyCount = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-	// Fetch all queue families.
-	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-	// Save the index of the queue family which can present images and one that can do graphics.
-	for (int i = 0; i < (int)queueFamilies.size(); i++)
-	{
-		const auto& queueFamily = queueFamilies[i];
-
-		VkBool32 presentSupport = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, this->surface, &presentSupport);
-
-		// Queue can present images
-		if (presentSupport) {
-			indices.presentFamily = i;
-		}
-
-		// Queue can do graphics
-		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-			indices.graphicsFamily = i;
-		}
-	}
-
-	// Logic to find queue family indices to populate struct with
-	return indices;
+	vkGetDeviceQueue(this->logicalDevice, this->graphicsQueue.queueIndex, 0, &this->graphicsQueue.queue);
+	vkGetDeviceQueue(this->logicalDevice, this->presentQueue.queueIndex, 0, &this->presentQueue.queue);
+	vkGetDeviceQueue(this->logicalDevice, this->transferQueue.queueIndex, 0, &this->transferQueue.queue);
+	vkGetDeviceQueue(this->logicalDevice, this->computeQueue.queueIndex, 0, &this->computeQueue.queue);
 }
 
 bool ym::VulkanInstance::checkDeviceExtensionSupport(VkPhysicalDevice device)

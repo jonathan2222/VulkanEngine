@@ -5,8 +5,6 @@
 #include "../Input/Input.h"
 #include "LayerManager.h"
 
-#include "../Graphics/VulkanInstance.h"
-
 #include "Utils/Timer.h"
 
 ym::App::App()

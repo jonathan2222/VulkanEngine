@@ -3,8 +3,12 @@
 
 #include "VulkanInstance.h"
 
-ym::SwapChain::SwapChain() : swapChain(VK_NULL_HANDLE)
+ym::SwapChain::SwapChain()
 {
+	this->swapChain = VK_NULL_HANDLE;
+	this->imageFormat = VK_FORMAT_UNDEFINED;
+	this->extent = { 0, 0 };
+	this->numImages = 0;
 }
 
 ym::SwapChain::~SwapChain()
@@ -32,11 +36,36 @@ void ym::SwapChain::destory()
 	this->swapChain = VK_NULL_HANDLE;
 }
 
+uint32_t ym::SwapChain::getNumImages() const
+{
+	return this->numImages;
+}
+
+VkSwapchainKHR ym::SwapChain::getSwapChain() const
+{
+	return this->swapChain;
+}
+
+VkExtent2D ym::SwapChain::getExtent() const
+{
+	return this->extent;
+}
+
+VkFormat ym::SwapChain::getImageFormat() const
+{
+	return this->imageFormat;
+}
+
+std::vector<VkImageView> ym::SwapChain::getImageViews() const
+{
+	return this->imageViews;
+}
+
 void ym::SwapChain::createSwapChain(unsigned int width, unsigned int height)
 {
 	VulkanInstance* instance = VulkanInstance::get();
 
-	VulkanInstance::SwapChainSupportDetails swapChainSupport = instance->getSwapChainSupportDetails();
+	SwapChainSupportDetails swapChainSupport = instance->getSwapChainSupportDetails();
 
 	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
 	VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
@@ -57,7 +86,7 @@ void ym::SwapChain::createSwapChain(unsigned int width, unsigned int height)
 	// If you are rendering to a separate image first, for example post-process effects, then use VK_IMAGE_USAGE_TRANSFER_DST_BIT to transfer that image to the swap chain image.
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; 
 
-	VulkanInstance::QueueFamilyIndices indices = instance->getQueueFamilies();
+	QueueFamilyIndices indices = instance->getQueueFamilies();
 	uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
 	if (indices.graphicsFamily != indices.presentFamily) {
@@ -120,7 +149,7 @@ void ym::SwapChain::createImageViews(uint32_t imageCount)
 	}
 }
 
-uint32_t ym::SwapChain::calcNumSwapChainImages(VulkanInstance::SwapChainSupportDetails& swapChainSupport)
+uint32_t ym::SwapChain::calcNumSwapChainImages(SwapChainSupportDetails& swapChainSupport)
 {
 	// Request one more image then the minimum number of images to avoid to wait on the driver to complete internal operations before we can acquire another image to render to.
 	uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
@@ -163,8 +192,8 @@ VkExtent2D ym::SwapChain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capab
 	}
 	else {
 		VkExtent2D actualExtent = { width, height };
-		actualExtent.width = max(capabilities.minImageExtent.width, min(capabilities.maxImageExtent.width, actualExtent.width));
-		actualExtent.height = max(capabilities.minImageExtent.height, min(capabilities.maxImageExtent.height, actualExtent.height));
+		actualExtent.width = glm::max(capabilities.minImageExtent.width, glm::min(capabilities.maxImageExtent.width, actualExtent.width));
+		actualExtent.height = glm::max(capabilities.minImageExtent.height, glm::min(capabilities.maxImageExtent.height, actualExtent.height));
 		return actualExtent;
 	}
 }

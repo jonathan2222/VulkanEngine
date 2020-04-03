@@ -1,18 +1,16 @@
 #include "stdafx.h"
-#include "Renderer.h"
+#include "ModelRenderer.h"
 
-#include "../Input/Config.h"
-
-ym::Renderer::Renderer()
+ym::ModelRenderer::ModelRenderer()
 {
 	this->instance = VulkanInstance::get();
 }
 
-ym::Renderer::~Renderer()
+ym::ModelRenderer::~ModelRenderer()
 {
 }
 
-void ym::Renderer::init()
+void ym::ModelRenderer::init()
 {
 	this->instance->init();
 
@@ -21,7 +19,7 @@ void ym::Renderer::init()
 	this->swapChain.init(width, height);
 }
 
-void ym::Renderer::destroy()
+void ym::ModelRenderer::destroy()
 {
 	this->swapChain.destory();
 	this->instance->destroy();

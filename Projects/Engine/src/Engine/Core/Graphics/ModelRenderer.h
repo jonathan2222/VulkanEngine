@@ -5,11 +5,11 @@
 
 namespace ym
 {
-	class Renderer
+	class ModelRenderer
 	{
 	public:
-		Renderer();
-		virtual ~Renderer();
+		ModelRenderer();
+		virtual ~ModelRenderer();
 
 		void init();
 		void destroy();

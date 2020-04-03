@@ -1,30 +1,21 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
-#include <vector>
-#include <optional>
+#include "stdafx.h"
+
+#include "Engine/Core/Vulkan/VulkanHelperfunctions.h"
 
 namespace ym
 {
+	struct VulkanQueue {
+		VulkanQueue() : queue(VK_NULL_HANDLE), queueIndex(0) {};
+
+		VkQueue queue;
+		uint32_t queueIndex;
+	};
+
 	class VulkanInstance
 	{
 	public:
-		struct SwapChainSupportDetails {
-			SwapChainSupportDetails(SwapChainSupportDetails& other) = default;
-			VkSurfaceCapabilitiesKHR capabilities;
-			std::vector<VkSurfaceFormatKHR> formats;
-			std::vector<VkPresentModeKHR> presentModes;
-		};
-
-		struct QueueFamilyIndices {
-			std::optional<unsigned> graphicsFamily;
-			std::optional<uint32_t> presentFamily;
-
-			bool isComplete() {
-				return graphicsFamily.has_value() && presentFamily.has_value();
-			}
-		};
-
 		virtual ~VulkanInstance();
 
 		// Get the instance of the class Instance.
@@ -33,17 +24,18 @@ namespace ym
 		void init();
 		void destroy();
 
+		SwapChainSupportDetails getSwapChainSupportDetails();
+		QueueFamilyIndices getQueueFamilies();
+
 		VkInstance getInstance();
 		VkSurfaceKHR getSurface();
-
 		VkPhysicalDevice getPhysicalDevice();
 		VkDevice getLogicalDevice();
 
-		VkQueue getPresentQueue();
-		VkQueue getGraphicsQueue();
-
-		SwapChainSupportDetails getSwapChainSupportDetails();
-		QueueFamilyIndices getQueueFamilies();
+		VulkanQueue getGraphicsQueue() const { return this->graphicsQueue; }
+		VulkanQueue getPresentQueue() const { return this->presentQueue; }
+		VulkanQueue getTransferQueue() const { return this->transferQueue; }
+		VulkanQueue getComputeQueue() const { return this->computeQueue; }
 
 	private:
 		VulkanInstance();
@@ -60,8 +52,6 @@ namespace ym
 		void createLogicalDevice(VkPhysicalDeviceFeatures deviceFeatures);
 
 		// Utils functions
-		QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
-		SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
 		bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 		bool checkValidationLayerSupport(const std::vector<const char*>& validationLayers);
 
@@ -86,7 +76,9 @@ namespace ym
 		VkPhysicalDevice physicalDevice;
 		VkDevice logicalDevice;
 
-		VkQueue graphicsQueue;
-		VkQueue presentQueue;
+		VulkanQueue graphicsQueue;
+		VulkanQueue presentQueue;
+		VulkanQueue transferQueue;
+		VulkanQueue computeQueue;
 	};
 }
