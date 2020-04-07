@@ -50,11 +50,11 @@ void ym::LayerManager::onUpdate(float dt)
 	this->layers.back()->onUpdate(dt);
 }
 
-void ym::LayerManager::onRender()
+void ym::LayerManager::onRender(Renderer* renderer)
 {
 	YM_PROFILER_RENDERING_FUNCTION();
 	// Render the active layer
-	this->layers.back()->onRender();
+	this->layers.back()->onRender(renderer);
 }
 
 void ym::LayerManager::onRenderImGui()
@@ -68,4 +68,9 @@ void ym::LayerManager::onQuit()
 {
 	for (Layer*& layer : this->layers)
 		layer->onQuit();
+}
+
+ym::CommandPools* ym::LayerManager::getCommandPools()
+{
+	return &this->appPtr->commandPools;
 }

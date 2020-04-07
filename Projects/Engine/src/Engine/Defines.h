@@ -18,4 +18,9 @@
 #define MakePtr(T, ...) std::make_unique<T>(__VA_ARGS__)
 #define MakeRef(T, ...) std::make_shared<T>(__VA_ARGS__)
 
+#define SAFE_DELETE(p) if(p){delete p; p = nullptr;}
+#define SAFE_DELETE_ARR(arr) if(p){delete[] arr; arr = nullptr;}
+#define SIZE_OF_ARR(arr) (sizeof(arr)/sizeof(arr[0]))
+
+#define YM_ASSETS_FILE_PATH std::string("./Resources/")
 #define YM_CONFIG_FILE_PATH "./Resources/Config/EngineConfig.json"

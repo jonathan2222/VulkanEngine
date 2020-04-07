@@ -41,28 +41,37 @@ namespace ym
 		};
 
 	public:
+		/*
+			Creates default data such as a default texture and sampler, when it is missing.
+		*/
 		static void initDefaultData(CommandPool* transferCommandPool);
-		static void cleanupDefaultData();
 
-		// Will read from file and load the data into the model pointer.
+		/*
+			Destroy the default data.
+		*/
+		static void destroyDefaultData();
+
+		/*
+			Load a model to the GPU. This will perform staging.
+		*/
 		static void load(const std::string& filePath, Model* model);
 
-		// TODO: This should be in a renderer!
-		static void recordDraw(Model* model, CommandBuffer* commandBuffer, Pipeline* pipeline, const std::vector<VkDescriptorSet>& sets, const std::vector<uint32_t>& offsets);
+		/*
+			Create buffers and load the model data to RAM.
+		*/
+		static void loadToRAM(const std::string& filePath, Model* model, StagingBuffers* stagingBuffers);
 
-		static void prepareStagingBuffer(const std::string& filePath, Model* model, StagingBuffers* stagingBuffers);
-		static void transferToModel(CommandPool* transferCommandPool, Model* model, StagingBuffers* stagingBuffers);
+		/*
+			Transfer model data from RAM to the GPU.
+		*/
+		static void transferToGPU(CommandPool* transferCommandPool, Model* model, StagingBuffers* stagingBuffers);
 
 	private:
-		static void loadModel(Model& model, const std::string& filePath);
 		static void loadTextures(std::string& folderPath, Model& model, tinygltf::Model& gltfModel, StagingBuffers* stagingBuffers);
 		static void loadImageData(std::string& folderPath, tinygltf::Image& image, tinygltf::Model& gltfModel, std::vector<uint8_t>& data);
 		static void loadSamplerData(tinygltf::Sampler& samplerGltf, Sampler& sampler);
 		static void loadMaterials(Model& model, tinygltf::Model& gltfModel);
-		static void loadScenes(Model& model, tinygltf::Model& gltfModel);
 		static void loadNode(Model& model, Model::Node* node, tinygltf::Model& gltfModel, tinygltf::Node& gltfNode, std::string indents);
-
-		static void drawNode(Pipeline* pipeline, CommandBuffer* commandBuffer, Model::Node& node);
 
 		static void loadModel(Model& model, const std::string& filePath, StagingBuffers* stagingBuffers);
 		static void loadScenes(Model& model, tinygltf::Model& gltfModel, StagingBuffers* stagingBuffers);
@@ -73,9 +82,8 @@ namespace ym
 
 		struct DefaultData
 		{
-			Texture texture;
+			Texture* texture;
 			Sampler sampler;
-			Memory memory;
 		};
 		static DefaultData defaultData;
 	};

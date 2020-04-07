@@ -29,13 +29,13 @@ namespace ym
 		VULKAN_CHECK(vkCreateFramebuffer(VulkanInstance::get()->getLogicalDevice(), &framebufferInfo, nullptr, &this->framebuffer), "Failed to create framebuffer");
 	}
 
-	VkFramebuffer Framebuffer::getFramebuffer()
-	{
-		return this->framebuffer;
-	}
-
 	void Framebuffer::destroy()
 	{
 		vkDestroyFramebuffer(VulkanInstance::get()->getLogicalDevice(), this->framebuffer, nullptr);
+	}
+
+	VkFramebuffer Framebuffer::getFramebuffer()
+	{
+		return this->framebuffer;
 	}
 }

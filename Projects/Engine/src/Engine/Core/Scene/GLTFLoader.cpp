@@ -20,6 +20,9 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtc/type_ptr.hpp>			// make_vec3(), make_mat4()
 
+#include "Engine/Core/Vulkan/Factory.h"
+#include "Engine/Core/Application/LayerManager.h"
+
 namespace ym
 {
 	Model GLTFLoader::model = Model();
@@ -29,91 +32,53 @@ namespace ym
 	void GLTFLoader::initDefaultData(CommandPool* transferCommandPool)
 	{
 		// Default 1x1 white texture
-		{
-			Texture& texture = defaultData.texture;
-			Memory& memory = defaultData.memory;
-
-			uint32_t w = 1, h = 1;
-			uint8_t pixel[4] = { 0xFF, 0xFF, 0xFF, 0xFF };
-			VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
-
-			// Setup the device texture.
-			texture.init(w, h, format, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, { VulkanInstance::get()->getGraphicsQueue().queueIndex }, 0, 1);
-			memory.bindTexture(&texture);
-			memory.init(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			texture.getImageView().init(texture.getVkImage(), VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-
-			// Setup staging buffer and memory.
-			Buffer stagingBuffer;
-			Memory stagingMemory;
-			stagingBuffer.init(sizeof(pixel), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, { VulkanInstance::get()->getGraphicsQueue().queueIndex });
-			stagingMemory.bindBuffer(&stagingBuffer);
-			stagingMemory.init(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-			stagingMemory.directTransfer(&stagingBuffer, (void*)pixel, sizeof(pixel), 0);
-
-			// Setup a buffer copy region for the transfer.
-			std::vector<VkBufferImageCopy> bufferCopyRegions;
-			VkBufferImageCopy bufferCopyRegion = {};
-			bufferCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			bufferCopyRegion.imageSubresource.mipLevel = 0;
-			bufferCopyRegion.imageSubresource.baseArrayLayer = 0;
-			bufferCopyRegion.imageSubresource.layerCount = 1;
-			bufferCopyRegion.imageExtent.width = texture.getWidth();
-			bufferCopyRegion.imageExtent.height = texture.getHeight();
-			bufferCopyRegion.imageExtent.depth = 1;
-			bufferCopyRegion.bufferOffset = 0;
-			bufferCopyRegions.push_back(bufferCopyRegion);
-
-			// Transfer data to texture memory.
-			Image::TransistionDesc desc;
-			desc.format = texture.getFormat();
-			desc.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			desc.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			desc.pool = transferCommandPool;
-			desc.layerCount = 1;
-			Image & image = texture.getImage();
-			image.transistionLayout(desc);
-			image.copyBufferToImage(&stagingBuffer, transferCommandPool, bufferCopyRegions);
-			desc.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			desc.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			image.transistionLayout(desc);
-
-			stagingBuffer.destroy();
-			stagingMemory.destroy();
-		}
+		uint8_t pixel[4] = { 0xFF, 0xFF, 0xFF, 0xFF };
+		TextureDesc textureDesc;
+		textureDesc.width = 1;
+		textureDesc.height = 1;
+		textureDesc.format = VK_FORMAT_R8G8B8A8_UNORM;
+		textureDesc.data = &pixel[0];
+		defaultData.texture = ym::Factory::createTexture(textureDesc, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
+		ym::Factory::transferData(defaultData.texture, transferCommandPool);
 
 		// Sampler
-		{
-			Sampler& sampler = defaultData.sampler;
-			sampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
-		}
+		Sampler& sampler = defaultData.sampler;
+		sampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
+		// Set descriptor
+		ym::Factory::applyTextureDescriptor(defaultData.texture, &sampler);
 	}
 
-	void GLTFLoader::cleanupDefaultData()
+	void GLTFLoader::destroyDefaultData()
 	{
-		defaultData.texture.destroy();
+		defaultData.texture->destroy();
+		SAFE_DELETE(defaultData.texture);
 		defaultData.sampler.destroy();
-		defaultData.memory.destroy();
 	}
 
-	void GLTFLoader::load(const std::string & filePath, Model * model)
+	void GLTFLoader::load(const std::string& filePath, Model* model)
 	{
-		loadModel(*model, filePath);
+		CommandPool& graphicsPool = LayerManager::get()->getCommandPools()->graphicsPool;
+		StagingBuffers stagingBuffers;
+		loadToRAM(filePath, model, &stagingBuffers);
+		stagingBuffers.initMemory();
+		transferToGPU(&graphicsPool, model, &stagingBuffers);
+		stagingBuffers.destroy();
 	}
 
-	void GLTFLoader::prepareStagingBuffer(const std::string & filePath, Model * model, StagingBuffers * stagingBuffers)
+	void GLTFLoader::loadToRAM(const std::string & filePath, Model * model, StagingBuffers * stagingBuffers)
 	{
 		loadModel(*model, filePath, stagingBuffers);
 	}
 
-	void GLTFLoader::transferToModel(CommandPool * transferCommandPool, Model * model, StagingBuffers * stagingBuffers)
+	void GLTFLoader::transferToGPU(CommandPool * transferCommandPool, Model * model, StagingBuffers * stagingBuffers)
 	{
 		// Transfer all images their coresponding textures
-		uint32_t totalTextureSize = 0;
+		uint64_t totalTextureSize = 0;
 		for (uint32_t textureIndex = 0; textureIndex < model->textures.size(); textureIndex++)
 		{
 			Texture& texture = model->textures[textureIndex];
-			const uint32_t wh = texture.getWidth() * texture.getHeight();
+			const uint32_t wh = texture.textureDesc.width * texture.textureDesc.height;
 			const uint64_t size = wh * 4;
 			totalTextureSize += size;
 
@@ -129,25 +94,25 @@ namespace ym
 			bufferCopyRegion.imageSubresource.mipLevel = 0;
 			bufferCopyRegion.imageSubresource.baseArrayLayer = 0;
 			bufferCopyRegion.imageSubresource.layerCount = 1;
-			bufferCopyRegion.imageExtent.width = texture.getWidth();
-			bufferCopyRegion.imageExtent.height = texture.getHeight();
+			bufferCopyRegion.imageExtent.width = texture.textureDesc.width;
+			bufferCopyRegion.imageExtent.height = texture.textureDesc.height;
 			bufferCopyRegion.imageExtent.depth = 1;
 			bufferCopyRegion.bufferOffset = textureIndex * size;
 			bufferCopyRegions.push_back(bufferCopyRegion);
 
 			// Transfer data to texture memory.
 			Image::TransistionDesc desc;
-			desc.format = texture.getFormat();
+			desc.format = texture.textureDesc.format;
 			desc.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			desc.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 			desc.pool = transferCommandPool;
 			desc.layerCount = 1;
-			Image& image = texture.getImage();
-			image.transistionLayout(desc);
-			image.copyBufferToImage(&stagingBuffers->imageBuffer, transferCommandPool, bufferCopyRegions);
+			
+			texture.image.transistionLayout(desc);
+			texture.image.copyBufferToImage(&stagingBuffers->imageBuffer, transferCommandPool, bufferCopyRegions);
 			desc.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 			desc.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			image.transistionLayout(desc);
+			texture.image.transistionLayout(desc);
 		}
 		model->imageData.clear();
 
@@ -195,53 +160,6 @@ namespace ym
 		transferCommandPool->endSingleTimeCommand(cbuff);
 	}
 
-	void GLTFLoader::recordDraw(Model * model, CommandBuffer * commandBuffer, Pipeline * pipeline, const std::vector<VkDescriptorSet> & sets, const std::vector<uint32_t> & offsets)
-	{
-		// TODO: Use different materials, can still use same pipeline if all meshes uses same type of material (i.e. PBR)!
-		if (model->vertexBuffer.getBuffer() == VK_NULL_HANDLE)
-			return;
-
-		//VkBuffer vertexBuffers[] = { this->model.vertexBuffer.getBuffer() };
-		//VkDeviceSize vertOffsets[] = { 0 };
-		//this->cmdBuffs[i]->cmdBindVertexBuffers(0, 1, vertexBuffers, vertOffsets);
-		if (model->indices.empty() == false)
-			commandBuffer->cmdBindIndexBuffer(model->indexBuffer.getBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-		commandBuffer->cmdBindDescriptorSets(pipeline, 0, sets, offsets);
-		for (Model::Node& node : model->nodes)
-			drawNode(pipeline, commandBuffer, node);
-	}
-
-	void GLTFLoader::loadModel(Model & model, const std::string & filePath)
-	{
-		tinygltf::Model gltfModel;
-		bool ret = false;
-		size_t pos = filePath.rfind('.');
-		if (pos != std::string::npos)
-		{
-			std::string err;
-			std::string warn;
-
-			std::string prefix = filePath.substr(pos);
-			if (prefix == ".gltf")
-				ret = loader.LoadASCIIFromFile(&gltfModel, &err, &warn, filePath);
-			else if (prefix == ".glb")
-				ret = loader.LoadBinaryFromFile(&gltfModel, &err, &warn, filePath); // for binary glTF(.glb)
-
-			if (!warn.empty()) YM_LOG_WARN("GLTF Waring: {0}", warn.c_str());
-			if (!err.empty()) YM_LOG_ERROR("GLTF Error: {0}", err.c_str());
-		}
-
-		YM_ASSERT(ret, "Failed to parse glTF\n");
-
-		pos = filePath.find_last_of("/\\");
-		std::string folderPath = filePath.substr(0, pos + 1);
-
-		loadTextures(folderPath, model, gltfModel, nullptr);
-		loadMaterials(model, gltfModel);
-		loadScenes(model, gltfModel);
-	}
-
 	void GLTFLoader::loadTextures(std::string & folderPath, Model & model, tinygltf::Model & gltfModel, StagingBuffers * stagingBuffers)
 	{
 		YM_LOG_INFO("Textures:");
@@ -260,17 +178,20 @@ namespace ym
 			loadImageData(folderPath, image, gltfModel, model.imageData[textureIndex]);
 
 			Texture& texture = model.textures[textureIndex];
-			texture.init(image.width, image.height, format, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, { VulkanInstance::get()->getGraphicsQueue().queueIndex }, 0, 1);
+			texture.image.init(image.width, image.height, format, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, { VulkanInstance::get()->getGraphicsQueue().queueIndex }, 0, 1);
 			model.imageMemory.bindTexture(&texture);
+			texture.textureDesc.width = (uint32_t)image.width;
+			texture.textureDesc.height = (uint32_t)image.height;
+			texture.textureDesc.format = format;
 
 		}
 		model.imageMemory.init(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		for (Texture& texture : model.textures)
-			texture.getImageView().init(texture.getVkImage(), VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+			texture.imageView.init(texture.image.getImage(), VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
 		uint64_t textureSize = 0;
 		for (Texture& texture : model.textures)
-			textureSize += texture.getWidth() * texture.getHeight() * 4;
+			textureSize += texture.textureDesc.width * texture.textureDesc.height * 4;
 		stagingBuffers->imageBuffer.init(textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, { VulkanInstance::get()->getGraphicsQueue().queueIndex });
 		stagingBuffers->imageMemory.bindBuffer(&stagingBuffers->imageBuffer);
 
@@ -320,7 +241,7 @@ namespace ym
 
 			int width, height;
 			int channels;
-			uint8_t* imgData = static_cast<uint8_t*>(stbi_load_from_memory(dataPtr, view.byteLength, &width, &height, &channels, numComponents));
+			uint8_t* imgData = static_cast<uint8_t*>(stbi_load_from_memory(dataPtr, (int)view.byteLength, &width, &height, &channels, numComponents));
 			if (imgData == nullptr)
 				YM_LOG_ERROR("Failed to load embedded texture! could not find file!");
 			else {
@@ -421,7 +342,7 @@ namespace ym
 
 			// Construct material structure.
 			Material& material = model.materials[materialIndex];
-			material.index = materialIndex;
+			material.index = (uint32_t)materialIndex;
 			/*material.pbrMR.metallicFactor = (float)pbrMR.metallicFactor;
 			material.pbrMR.roughnessFactor = (float)pbrMR.roughnessFactor;
 			material.pbrMR.baseColorTexture.index = baseColorTexture.index;
@@ -441,7 +362,7 @@ namespace ym
 			*/
 
 			auto getTex = [&](int index)->Material::Tex {
-				Texture* texture = index != -1 ? &model.textures[index] : &defaultData.texture;
+				Texture* texture = index != -1 ? &model.textures[index] : defaultData.texture;
 				Sampler* sampler = (index != -1 && gltfModel.textures[index].sampler != -1) ? &model.samplers[gltfModel.textures[index].sampler] : &defaultData.sampler;
 				return { texture, sampler };
 			};
@@ -468,42 +389,6 @@ namespace ym
 			material.pushData.normalTextureCoord = getTeCoord(normalTexture.index, normalTexture.texCoord);
 			material.pushData.occlusionTextureCoord = getTeCoord(occlusionTexture.index, occlusionTexture.texCoord);
 		}
-	}
-
-	void GLTFLoader::loadScenes(Model & model, tinygltf::Model & gltfModel)
-	{
-		for (auto& scene : gltfModel.scenes)
-		{
-			//JAS_INFO("Scene: {0}", scene.name.c_str());
-			// Load each node in the scene
-			model.nodes.resize(scene.nodes.size());
-			for (size_t nodeIndex = 0; nodeIndex < scene.nodes.size(); nodeIndex++)
-			{
-				tinygltf::Node& node = gltfModel.nodes[scene.nodes[nodeIndex]];
-				loadNode(model, &model.nodes[nodeIndex], gltfModel, node, " ");
-			}
-		}
-
-		// Create vertex and index buffers
-		std::vector<uint32_t> queueIndices = { findQueueIndex(VK_QUEUE_GRAPHICS_BIT, VulkanInstance::get()->getPhysicalDevice()) };
-		uint32_t indicesSize = (uint32_t)(model.indices.size() * sizeof(uint32_t));
-		if (indicesSize > 0)
-		{
-			model.indexBuffer.init(indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, queueIndices);
-			model.bufferMemory.bindBuffer(&model.indexBuffer);
-		}
-
-		uint32_t verticesSize = (uint32_t)(model.vertices.size() * sizeof(Vertex));
-		model.vertexBuffer.init(verticesSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, queueIndices);
-		model.bufferMemory.bindBuffer(&model.vertexBuffer);
-
-		// Create memory with the binded buffers
-		model.bufferMemory.init(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-		// Transfer data to buffers
-		if (indicesSize > 0)
-			model.bufferMemory.directTransfer(&model.indexBuffer, (const void*)model.indices.data(), indicesSize, 0);
-		model.bufferMemory.directTransfer(&model.vertexBuffer, (const void*)model.vertices.data(), verticesSize, 0);
 	}
 
 	void GLTFLoader::loadNode(Model & model, Model::Node * node, tinygltf::Model & gltfModel, tinygltf::Node & gltfNode, std::string indents)
@@ -660,25 +545,6 @@ namespace ym
 				}
 			}
 		}
-	}
-
-	void GLTFLoader::drawNode(Pipeline * pipeline, CommandBuffer * commandBuffer, Model::Node & node)
-	{
-		if (node.hasMesh)
-		{
-			Mesh& mesh = node.mesh;
-			for (Primitive& primitive : mesh.primitives)
-			{
-				// TODO: Send node transformation as push constant per draw!
-
-				if (primitive.hasIndices)
-					commandBuffer->cmdDrawIndexed(primitive.indexCount, 1, primitive.firstIndex, 0, 0);
-				else
-					commandBuffer->cmdDraw(primitive.vertexCount, 1, 0, 0);
-			}
-		}
-		for (Model::Node& child : node.children)
-			drawNode(pipeline, commandBuffer, child);
 	}
 
 	void GLTFLoader::loadModel(Model & model, const std::string & filePath, StagingBuffers * stagingBuffers)

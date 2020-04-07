@@ -74,7 +74,7 @@ namespace ym
 				Material::PushData& pushData = primitive.material->pushData;
 				commandBuffer->cmdPushConstants(pipeline, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(PushConstantData), sizeof(Material::PushData), &pushData);
 
-				uint32_t numNonMaterialSets = sets.size() - (uint32_t)node.model->materials.size();
+				uint32_t numNonMaterialSets = (uint32_t)sets.size() - (uint32_t)node.model->materials.size();
 				std::vector<VkDescriptorSet> setsUsed(numNonMaterialSets + 1);
 				for (uint32_t i = 0; i < numNonMaterialSets; i++)
 					setsUsed[i] = sets[i];

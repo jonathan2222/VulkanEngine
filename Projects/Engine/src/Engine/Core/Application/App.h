@@ -5,6 +5,7 @@
 #include "Layer.h"
 #include <vector>
 #include "../Graphics/Renderer.h"
+#include "Engine/Core/Vulkan/CommandPools.h"
 
 int main(int argc, char* argv[]);
 
@@ -27,6 +28,8 @@ namespace ym
 	protected:
 		ym::LayerManager* layerManager;
 		Renderer renderer;
+		CommandPools commandPools;
+		VulkanInstance* vulkanInstance;
 	};
 
 	// The user should define this!

@@ -13,10 +13,9 @@ namespace ym
 		~Framebuffer();
 
 		void init(size_t numFrameBuffers, RenderPass* renderpass, const std::vector<VkImageView>& attachments, VkExtent2D extent);
+		void destroy();
 
 		VkFramebuffer getFramebuffer();
-
-		void destroy();
 
 	private:
 		VkFramebuffer framebuffer;

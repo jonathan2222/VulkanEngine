@@ -32,17 +32,24 @@ ym::App::App()
 	Input* input = Input::get();
 	input->init();
 
-	// Initialize the vulkan renderer.
-	this->renderer.init();
+	this->vulkanInstance = VulkanInstance::get();
+	this->vulkanInstance->init();
+
+	this->commandPools.init();
 
 	// Create the layer manager.
 	this->layerManager = LayerManager::get();
 	this->layerManager->setApp(this);
+
+	// Initialize the vulkan renderer.
+	this->renderer.init();
 }
 
 ym::App::~App()
 {
 	this->renderer.destroy();
+	this->commandPools.destroy();
+	this->vulkanInstance->destroy();
 	Display::get()->destroy();
 	API::get()->destroy();
 
@@ -52,8 +59,6 @@ ym::App::~App()
 void ym::App::run()
 {
 	bool activateImGUI = Config::get()->fetch<bool>("Debuglayer/active");
-
-	start();
 
 	// Initiate layers
 	this->layerManager->onStart();
@@ -102,7 +107,7 @@ void ym::App::run()
 			//m_renderer->beginScene(0.0f, 0.0f, 0.0f, 1.0f);
 
 			// Render the active layer
-			this->layerManager->onRender();
+			this->layerManager->onRender(&this->renderer);
 
 			// Render debug information on the active layer with ImGUI
 

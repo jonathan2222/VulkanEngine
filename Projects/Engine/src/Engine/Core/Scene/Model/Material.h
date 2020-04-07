@@ -5,7 +5,7 @@
 
 namespace ym
 {
-	class Texture;
+	struct Texture;
 	class Sampler;
 	struct Material
 	{

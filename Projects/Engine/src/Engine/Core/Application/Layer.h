@@ -8,6 +8,7 @@
 
 namespace ym
 {
+	class Renderer;
 	class Layer
 	{
 	public:
@@ -16,7 +17,7 @@ namespace ym
 
 		virtual void onStart() = 0;
 		virtual void onUpdate(float dt) = 0;
-		virtual void onRender() = 0;
+		virtual void onRender(Renderer* renderer) = 0;
 		virtual void onRenderImGui() = 0;
 		virtual void onQuit() = 0;
 

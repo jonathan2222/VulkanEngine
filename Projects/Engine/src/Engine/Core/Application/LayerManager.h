@@ -2,11 +2,15 @@
 
 #include <vector>
 
+#include "Engine/Core/Vulkan/CommandPools.h"
+
 namespace ym
 {
 	class API;
 	class App;
 	class Layer;
+	class Renderer;
+	class CommandPools;
 	class LayerManager
 	{
 	public:
@@ -25,12 +29,14 @@ namespace ym
 		// Update the active layer
 		void onUpdate(float dt);
 		// Render the active layer
-		void onRender();
+		void onRender(Renderer* renderer);
 		// Render ImGui on the active layer
 		void onRenderImGui();
 
 		// Quit all layers
 		void onQuit();
+
+		CommandPools* getCommandPools();
 
 	private:
 		virtual ~LayerManager();

@@ -24,7 +24,7 @@ namespace ym
 		for (auto buffer : this->bufferOffsets)
 			typeFilter |= buffer.first->getMemReq().memoryTypeBits;
 		for (auto texture : this->textureOffsets)
-			typeFilter |= texture.first->getMemReq().memoryTypeBits;
+			typeFilter |= texture.first->getMemoryRequirements().memoryTypeBits;
 
 		uint32_t memoryTypeIndex = findMemoryType(VulkanInstance::get()->getPhysicalDevice(), typeFilter, memProp);
 
@@ -39,7 +39,7 @@ namespace ym
 			VULKAN_CHECK(vkBindBufferMemory(VulkanInstance::get()->getLogicalDevice(), buffer.first->getBuffer(), this->memory, buffer.second), "Failed to bind buffer memory!");
 
 		for (auto texture : this->textureOffsets)
-			VULKAN_CHECK(vkBindImageMemory(VulkanInstance::get()->getLogicalDevice(), texture.first->getVkImage(), this->memory, texture.second), "Failed to bind image memory!");
+			VULKAN_CHECK(vkBindImageMemory(VulkanInstance::get()->getLogicalDevice(), texture.first->image.getImage(), this->memory, texture.second), "Failed to bind image memory!");
 	}
 
 	void Memory::destroy()
@@ -56,7 +56,7 @@ namespace ym
 	void Memory::bindTexture(Texture* texture)
 	{
 		this->textureOffsets[texture] = this->currentOffset;
-		this->currentOffset += static_cast<Offset>(texture->getMemReq().size);
+		this->currentOffset += static_cast<Offset>(texture->getMemoryRequirements().size);
 	}
 
 	void Memory::directTransfer(Buffer* buffer, const void* data, uint64_t size, Offset bufferOffset)

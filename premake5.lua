@@ -127,6 +127,7 @@ function useEngine()
 	includeVulkan()
 	linkVulkan()
 	includeSpdlog()
+	includeGLTF()
 end
 
 -- ==============================================================================================
