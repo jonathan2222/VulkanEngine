@@ -38,6 +38,7 @@ void ym::Renderer::destroy()
 
 	this->renderPass.destroy();
 	this->depthTexture->destroy();
+	SAFE_DELETE(this->depthTexture);
 	for (Framebuffer& framebuffer : this->framebuffers) framebuffer.destroy();
 	this->swapChain.destory();
 }
