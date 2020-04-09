@@ -5,6 +5,7 @@
 #include "Engine/Core/Vulkan/Buffers/Framebuffer.h"
 #include "Engine/Core/Graphics/ModelRenderer.h"
 #include "Engine/Core/Vulkan/Pipeline/RenderPass.h"
+#include "Engine/Core/Camera.h"
 
 namespace ym
 {
@@ -16,6 +17,8 @@ namespace ym
 
 		void init();
 		void destroy();
+
+		void setCamera(Camera* camera);
 
 		/*
 			Begin frame. Will return true if succeeded, false if the swap chain needs to be recreated.
@@ -69,6 +72,5 @@ namespace ym
 		uint32_t framesInFlight;
 		uint32_t currentFrame;
 		uint32_t imageIndex;
-		uint32_t numImages;
 	};
 }

@@ -115,6 +115,8 @@ void ym::App::run()
 			//m_renderer->endScene();
 		}
 
+		Input::get()->update();
+
 		dt = timer.stop();
 		debugTimer += dt;
 		if (debugTimer >= 1.0f)

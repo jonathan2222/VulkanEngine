@@ -9,6 +9,8 @@
 #include "Engine/Core/Vulkan/Pipeline/Shader.h"
 #include "Engine/Core/Vulkan/Pipeline/DescriptorLayout.h"
 #include "Engine/Core/Vulkan/Buffers/UniformBuffer.h"
+#include "Engine/Core/Vulkan/Buffers/StorageBuffer.h"
+#include "Engine/Core/Camera.h"
 
 namespace ym
 {
@@ -23,6 +25,8 @@ namespace ym
 		void init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass);
 		void destroy();
 		
+		void setCamera(Camera* camera);
+
 		void begin(VkCommandBufferInheritanceInfo inheritanceInfo);
 
 		/*
@@ -44,30 +48,39 @@ namespace ym
 		{
 			glm::mat4 proj;
 			glm::mat4 view;
-			glm::vec4 pos;
+			alignas(16) glm::vec3 cPos;
 		};
 
 		struct DrawData
 		{
 			Model* model{ nullptr };
-			std::vector<glm::mat4> transforms; // Instance transform
+
+			// Instance data
+			std::vector<glm::mat4> transforms;
+			StorageBuffer transformsBuffer;
+			VkDescriptorSet descriptorSet;
 		};
 
-		void recordModel(Model* model, std::vector<glm::mat4> transform, uint32_t imageIndex, CommandBuffer* cmdBuffer, VkCommandBufferInheritanceInfo inheritanceInfo);
-		void drawNode(uint32_t imageIndex, CommandBuffer* commandBuffer, Pipeline* pipeline, Model::Node& node, uint32_t instanceCount);
+		void recordModel(Model* model, uint32_t imageIndex, VkDescriptorSet instanceDescriptorSet, CommandBuffer* cmdBuffer, VkCommandBufferInheritanceInfo inheritanceInfo);
+		void drawNode(uint32_t imageIndex, VkDescriptorSet instanceDescriptorSet, CommandBuffer* commandBuffer, Pipeline* pipeline, Model::Node& node, uint32_t instanceCount);
 		
 		void createBuffers();
 		void createDescriptorLayouts();
-		void recreateDescriptorPool(uint32_t materialCount, uint32_t nodeCount);
+		void recreateDescriptorPool(uint32_t materialCount, uint32_t nodeCount, uint32_t modelCount);
 		void createDescriptorsSets(std::map<uint64_t, DrawData>& drawBatch);
 		void createNodeDescriptorsSets(Model::Node& node);
+
+		uint64_t getUniqueId(uint32_t modelId, uint32_t instanceCount);
+		void addModelToBatch(DrawData& drawData);
 
 	private:
 		SwapChain* swapChain;
 
-		uint64_t uniqueId;
+		bool shouldRecreateDescriptors;
 		std::map<uint64_t, DrawData> drawBatch;
 		VkCommandBufferInheritanceInfo inheritanceInfo;
+
+		Camera* activeCamera{nullptr};
 
 		// Uniforms
 		std::vector<UniformBuffer> sceneUBOs;
@@ -77,6 +90,7 @@ namespace ym
 		struct DescriptorSetLayouts
 		{
 			DescriptorLayout scene;		// Holds camera data and other global data for the scene.
+			DescriptorLayout model;		// Holds instance transformations.
 			DescriptorLayout node;		// Holds local node transformations. (This will be the same for every instance of the same model)
 			DescriptorLayout material;	// Holds data of a specific material.
 		} descriptorSetLayouts;

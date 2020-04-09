@@ -131,7 +131,7 @@ namespace ym
 			model->bufferMemory.bindBuffer(&model->indexBuffer);
 		}
 
-		model->vertexBuffer.init(verticesSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, queueIndices);
+		model->vertexBuffer.init(verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, queueIndices);
 		model->bufferMemory.bindBuffer(&model->vertexBuffer);
 
 		// Create memory with the binded buffers
@@ -183,7 +183,6 @@ namespace ym
 			texture.textureDesc.width = (uint32_t)image.width;
 			texture.textureDesc.height = (uint32_t)image.height;
 			texture.textureDesc.format = format;
-
 		}
 		model.imageMemory.init(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		for (Texture& texture : model.textures)

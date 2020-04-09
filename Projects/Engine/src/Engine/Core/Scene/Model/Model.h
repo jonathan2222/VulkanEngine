@@ -92,6 +92,8 @@ namespace ym
 
 		void destroy();
 
+		uint32_t uniqueId;
+
 		// Layout
 		std::vector<Node> nodes;
 		uint32_t numMeshes;

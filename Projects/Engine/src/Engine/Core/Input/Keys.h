@@ -6,8 +6,10 @@ namespace ym
 {
 	enum class KeyState
 	{
-		PRESSED,
-		RELEASED
+		RELEASED = 0,
+		FIRST_RELEASED = 1,
+		FIRST_PRESSED = 2,
+		PRESSED = 3
 	};
 
 	enum class MB

@@ -5,7 +5,8 @@ namespace ym
 {
 	Model::Model()
 	{
-
+		static uint32_t idGenerator = 0;
+		this->uniqueId = idGenerator++;
 	}
 
 	Model::~Model()

@@ -7,7 +7,7 @@ typedef uint64_t Offset;
 namespace ym
 {
 	class Buffer;
-	class Texture;
+	struct Texture;
 
 	class Memory
 	{

@@ -10,7 +10,7 @@ namespace ym
 	class App;
 	class Layer;
 	class Renderer;
-	class CommandPools;
+	struct CommandPools;
 	class LayerManager
 	{
 	public:

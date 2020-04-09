@@ -2,6 +2,7 @@
 
 #include "Engine/Core/Application/Layer.h"
 #include "Engine/Core/Scene/Model/Model.h"
+#include "Engine/Core/Camera.h"
 
 class SandboxLayer : public ym::Layer
 {
@@ -15,4 +16,5 @@ public:
 
 private:
 	ym::Model model;
+	ym::Camera camera;
 };

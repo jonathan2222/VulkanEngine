@@ -13,7 +13,7 @@ layout(set=2, binding=1) uniform sampler2D metallicRoughnessTexture;
 layout(set=2, binding=2) uniform sampler2D normalTexture;
 layout(set=2, binding=3) uniform sampler2D occlusionTexture;
 layout(set=2, binding=4) uniform sampler2D emissiveTexture;
-
+/*
 layout(push_constant) uniform PushConstantsFrag
 {
     vec4 baseColorFactor;
@@ -143,13 +143,12 @@ float microfacetDistribution(PBRInfo pbrInputs)
 	float f = (pbrInputs.NdotH * roughnessSq - pbrInputs.NdotH) * pbrInputs.NdotH + 1.0;
 	return roughnessSq / (PI * f * f);
 }
-
+*/
 void main() {
-    /*vec3 baseColor = texture(baseColorTexture, fragUv).rgb;
+    vec3 baseColor = texture(baseColorTexture, fragUv).rgb;
+    outColor = vec4(baseColor, 1.0);
 
-    float diffuse = max(dot(normalize(fragNormal), -lightDir), 0.0);
-    
-    outColor = vec4(baseColor*diffuse, 1.0);*/
+	/*
     vec3 lightDir = normalize(vec3(0.5, 2.0, 0.5)); // Vector from surface point to light
 
     // Get material color
@@ -244,4 +243,5 @@ void main() {
 	}
 	
 	outColor = vec4(color, baseColor.a);
+	*/
 }

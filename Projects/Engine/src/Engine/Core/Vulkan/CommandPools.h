@@ -12,7 +12,7 @@ namespace ym
 
 		void init()
 		{
-			this->graphicsPool.init(CommandPool::Queue::GRAPHICS, 0);
+			this->graphicsPool.init(CommandPool::Queue::GRAPHICS, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 			this->transferPool.init(CommandPool::Queue::TRANSFER, 0);
 			this->computePool.init(CommandPool::Queue::COMPUTE, 0);
 		}

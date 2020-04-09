@@ -1,42 +1,58 @@
 #pragma once
 
-#include "glm/vec3.hpp"
-#include "glm/mat4x4.hpp"
+#include "stdafx.h"
 
 namespace ym
 {
-	// TODO: Make an Entity Component System and add the camera as a Entity with a system!
 	class Camera
 	{
 	public:
-		Camera(const glm::vec3& pos, const glm::vec3& dir, const glm::vec3& up, float nearPlane, float farPlane, float fov);
+		struct Plane
+		{
+			alignas(16) glm::vec3 normal;
+			alignas(16) glm::vec3 point;
+		};
+	public:
 
-		float getNearPlane() const;
-		float getFarPlane() const;
+		void init(float aspect, float fov, const glm::vec3& position, const glm::vec3& target, float speed, float hasteSpeed);
+		void destroy();
 
-		glm::vec3 getPos() const;
-		glm::vec3 getDir() const;
+		void update(float dt);
 
-		void updateView();
-		void updateProj();
+		void setPosition(const glm::vec3& position);
+		void setSpeed(float speed);
 
-		glm::vec3 getUp() const;
-		glm::vec3 getRight() const;
-		void setOrientaion(glm::vec3 up, glm::vec3& right);
-		void setPosition(glm::vec3 pos);
-
+		glm::mat4 getMatrix() const;
+		glm::mat4 getProjection() const;
 		glm::mat4 getView() const;
-		glm::mat4 getProj() const;
+		glm::vec3 getPosition() const;
+
+		const std::vector<Plane>& getPlanes() const;
 
 	private:
-		glm::vec3 m_pos;
-		glm::vec3 m_dir;
-		glm::vec3 m_up;
-		float m_nearPlane;
-		float m_farPlane;
-		float m_fov;
+		enum Side { NEAR_P = 0, FAR_P, LEFT_P, RIGHT_P, TOP_P, BOTTOM_P };
 
-		glm::mat4 m_view;
-		glm::mat4 m_proj;
+	private:
+		void updatePlanes();
+		std::vector<Camera::Plane> planes;
+
+		float speed, speedFactor, hasteSpeed;
+		float fov;
+		float nearPlane, farPlane;
+		float yaw, pitch, roll;
+		float aspect;
+		float nearHeight, nearWidth, farHeight, farWidth;
+
+		glm::vec3 globalUp;
+
+		glm::vec3 up;
+		glm::vec3 forward;
+		glm::vec3 right;
+
+		glm::vec3 position;
+		glm::vec3 target;
+
+		bool gravityOn;
+		float playerHeight;
 	};
 }

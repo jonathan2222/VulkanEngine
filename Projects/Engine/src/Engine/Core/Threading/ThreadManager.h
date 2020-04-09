@@ -25,7 +25,7 @@ public:
 	// Wait for a specific thread to have no work left.
 	static void wait(uint32_t threadIndex);
 
-	static uint32_t threadCount() { return threads.size(); };
+	static uint32_t threadCount() { return (uint32_t)threads.size(); };
 	static bool isQueueEmpty();
 	static bool isWorkFinished(uint32_t id);
 	static bool isWorkFinished(uint32_t id, uint32_t threadID);

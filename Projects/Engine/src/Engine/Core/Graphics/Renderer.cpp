@@ -10,6 +10,7 @@
 ym::Renderer::Renderer()
 {
 	this->depthTexture = nullptr;
+	this->currentFrame = 0;
 }
 
 ym::Renderer::~Renderer()
@@ -52,6 +53,11 @@ void ym::Renderer::destroy()
 	for (Framebuffer& framebuffer : this->framebuffers) framebuffer.destroy();
 	destroySyncObjects();
 	this->swapChain.destory();
+}
+
+void ym::Renderer::setCamera(Camera* camera)
+{
+	this->modelRenderer.setCamera(camera);
 }
 
 bool ym::Renderer::begin()
@@ -175,10 +181,11 @@ void ym::Renderer::createFramebuffers(VkImageView depthAttachment)
 
 void ym::Renderer::createSyncObjects()
 {
+	this->framesInFlight = 3;
 	this->imageAvailableSemaphores.resize(this->framesInFlight);
 	this->renderFinishedSemaphores.resize(this->framesInFlight);
 	this->inFlightFences.resize(this->framesInFlight);
-	this->imagesInFlight.resize(this->numImages, VK_NULL_HANDLE);
+	this->imagesInFlight.resize(this->swapChain.getNumImages(), VK_NULL_HANDLE);
 
 	VkSemaphoreCreateInfo SemaCreateInfo = {};
 	SemaCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -205,7 +212,7 @@ void ym::Renderer::destroySyncObjects()
 void ym::Renderer::submit()
 {
 	// Wait for model renderer to finish.
-	ThreadManager::wait((uint32_t)ERendererType::RENDER_TYPE_MODEL); // Wait on ModelRenderer
+	//ThreadManager::wait((uint32_t)ERendererType::RENDER_TYPE_MODEL); // Wait on ModelRenderer
 
 	// Gather all secondary buffers. (One in this case)
 	std::vector<CommandBuffer*>& secondaryBuffers = this->modelRenderer.getBuffers();
@@ -222,7 +229,7 @@ void ym::Renderer::submit()
 	value.depthStencil = { 1.0f, 0 };
 	clearValues.push_back(value);
 	buffer->cmdBeginRenderPass(&this->renderPass, this->framebuffers[this->imageIndex].getFramebuffer(), this->swapChain.getExtent(), clearValues, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-	buffer->cmdExecuteCommands(vkCommands.size(), vkCommands.data());
+	buffer->cmdExecuteCommands((uint32_t)vkCommands.size(), vkCommands.data());
 	buffer->cmdEndRenderPass();
 	buffer->end();
 
@@ -235,7 +242,7 @@ void ym::Renderer::submit()
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.waitSemaphoreCount = waitSemaphores.size();
+	submitInfo.waitSemaphoreCount = (uint32_t)waitSemaphores.size();
 	submitInfo.pWaitSemaphores = waitSemaphores.data();
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
