@@ -1,12 +1,12 @@
 #include "stdafx.h"
 #include "ModelRenderer.h"
+#include "Engine/Core/Threading/ThreadManager.h"
 
 ym::ModelRenderer::ModelRenderer()
 {
-	this->framesInFlight = 0;
-	this->currentFrame = 0;
-	this->imageIndex = 0;
-	this->numImages = 0;
+	this->threadID = 0;
+	this->swapChain = nullptr;
+	this->descriptorPool = VK_NULL_HANDLE;
 }
 
 ym::ModelRenderer::~ModelRenderer()
@@ -19,123 +19,344 @@ ym::ModelRenderer* ym::ModelRenderer::get()
 	return &modelRenderer;
 }
 
-void ym::ModelRenderer::init(SwapChain* swapChain)
+void ym::ModelRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass)
 {
 	this->swapChain = swapChain;
-
+	this->threadID = threadID;
 	this->commandPool.init(CommandPool::Queue::GRAPHICS, 0);
-	this->commandBuffers = this->commandPool.createCommandBuffers(this->swapChain->getNumImages(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	this->commandBuffers = this->commandPool.createCommandBuffers(this->swapChain->getNumImages(), VK_COMMAND_BUFFER_LEVEL_SECONDARY);
 
-	createSyncObjects();
+	this->shader.addStage(Shader::Type::VERTEX, YM_ASSETS_FILE_PATH + "Shaders/pbrVert.spv");
+	this->shader.addStage(Shader::Type::FRAGMENT, YM_ASSETS_FILE_PATH + "Shaders/pbrFrag.spv");
+	this->shader.init();
+
+	createDescriptorLayouts();
+	std::vector<DescriptorLayout> descriptorLayouts = { descriptorSetLayouts.scene, descriptorSetLayouts.node, descriptorSetLayouts.material };
+	this->pipeline.setDescriptorLayouts(descriptorLayouts);
+	this->pipeline.setGraphicsPipelineInfo(this->swapChain->getExtent(), renderPass);
+	this->pipeline.setWireframe(false);
+	this->pipeline.init(Pipeline::Type::GRAPHICS, &this->shader);
 }
 
 void ym::ModelRenderer::destroy()
 {
 	this->commandPool.destroy();
-
-	destroySyncObjects();
+	vkDestroyDescriptorPool(VulkanInstance::get()->getLogicalDevice(), this->descriptorPool, nullptr);
 }
 
-bool ym::ModelRenderer::begin()
+void ym::ModelRenderer::begin(VkCommandBufferInheritanceInfo inheritanceInfo)
 {
-	vkWaitForFences(VulkanInstance::get()->getLogicalDevice(), 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
-	VkResult result = vkAcquireNextImageKHR(VulkanInstance::get()->getLogicalDevice(), this->swapChain->getSwapChain(), UINT64_MAX, this->imageAvailableSemaphores[this->currentFrame], VK_NULL_HANDLE, &this->imageIndex);
+	this->inheritanceInfo = inheritanceInfo;
+	this->drawBatch.clear();
+	this->uniqueId = 0;
+}
 
-	// Check if window has been resized.
-	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-		return false;
-	}
-	YM_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR, "Failed to aquire swap chain image!");
+void ym::ModelRenderer::drawModel(Model* model, const glm::mat4& transform)
+{
+	DrawData drawData = {};
+	drawData.model = model;
+	drawData.transforms.push_back(transform);
+	this->drawBatch[this->uniqueId] = drawData;
+	this->uniqueId++;
+}
 
-	// Check if a previous frame is using this image (Wait for this image to be free for use).
-	if (this->imagesInFlight[this->imageIndex] != VK_NULL_HANDLE) {
-		vkWaitForFences(VulkanInstance::get()->getLogicalDevice(), 1, &this->imagesInFlight[this->imageIndex], VK_TRUE, UINT64_MAX);
-	}
+void ym::ModelRenderer::drawModel(Model* model, const std::vector<glm::mat4>& transforms)
+{
+	DrawData drawData = {};
+	drawData.model = model;
+	drawData.transforms.insert(drawData.transforms.begin(), transforms.begin(), transforms.end());
+	this->drawBatch[this->uniqueId] = drawData;
+	this->uniqueId++;
+}
 
-	/*
-		Marked image as being used by this frame.
-		This current frame will use the image with index imageIndex, mark this so that we now wen we can use this again.
+void ym::ModelRenderer::end(uint32_t imageIndex)
+{
+	// Check if new data should be drawn. If so, update descriptors.
+	// - Make Model hold a pointer to a mesh. (Can use same mesh, but different transforms)
+	// - Use the Model ptr together with uniqueId to check if same.
+	// - 
+
+	/* TODO: 
+		- Create model transform buffer.
+		- Descriptor for the model's vertex buffer.
+		- Solve problem of when to recreate descriptor pool.
 	*/
-	this->imagesInFlight[this->imageIndex] = this->inFlightFences[this->currentFrame];
 
-	return true;
+	// If not the same, recreate the descriptor pool.
+	bool shouldRecreatePool = false;
+	if (shouldRecreatePool)
+	{
+		// Recreate the descriptor pool on the other thread.
+		ThreadManager::addWork(this->threadID, [=]() {
+			// Fetch number of nodes and materials.
+			uint32_t nodeCount = 0;
+			uint32_t materialCount = 0;
+			for (auto& drawData : this->drawBatch)
+			{
+				nodeCount += drawData.second.model->numMeshes;
+				materialCount += static_cast<uint32_t>(drawData.second.model->materials.size());
+			}
+			recreateDescriptorPool(materialCount, nodeCount);
+
+			// Recreate descriptor sets
+			createDescriptorsSets(this->drawBatch);
+		});
+	}
+
+	// Start recording all draw commands on the thread.
+	CommandBuffer* currentBuffer = commandBuffers[imageIndex];
+	currentBuffer->begin(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, &inheritanceInfo);
+	for (auto& drawData : this->drawBatch)
+	{
+		ThreadManager::addWork(this->threadID, [=]() { 
+			recordModel(drawData.second.model, drawData.second.transforms, imageIndex, currentBuffer, inheritanceInfo);
+		});
+	}
+	currentBuffer->end();
 }
 
-void ym::ModelRenderer::drawModel(Model* model)
+std::vector<ym::CommandBuffer*>& ym::ModelRenderer::getBuffers()
 {
-	// Record to command buffer.
+	return this->commandBuffers;
+}
 
-
-	// Submit the buffer to the GPU.
-	const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT };
-	std::vector<VkSemaphore> waitSemaphores = { this->imageAvailableSemaphores[this->currentFrame] };
-	VkSemaphore signalSemaphores[] = { this->renderFinishedSemaphores[this->currentFrame] };
-	std::vector<VkCommandBuffer> buffers = { commandBuffers[this->imageIndex]->getCommandBuffer() };
+void ym::ModelRenderer::recordModel(Model* model, std::vector<glm::mat4> transform, uint32_t imageIndex, CommandBuffer* cmdBuffer, VkCommandBufferInheritanceInfo inheritanceInfo)
+{
+	if (model->vertexBuffer.getBuffer() == VK_NULL_HANDLE)
+		return;
 	
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.waitSemaphoreCount = waitSemaphores.size();
-	submitInfo.pWaitSemaphores = waitSemaphores.data();
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = signalSemaphores;
-	submitInfo.pCommandBuffers = buffers.data();
-	submitInfo.commandBufferCount = (uint32_t)buffers.size();
+	cmdBuffer->cmdBindPipeline(&this->pipeline);
 
-	vkResetFences(VulkanInstance::get()->getLogicalDevice(), 1, &this->inFlightFences[this->currentFrame]);
-	VULKAN_CHECK(vkQueueSubmit(VulkanInstance::get()->getGraphicsQueue().queue, 1, &submitInfo, this->inFlightFences[this->currentFrame]), "Failed to sumbit commandbuffer!");
+	if (model->indices.empty() == false)
+		cmdBuffer->cmdBindIndexBuffer(model->indexBuffer.getBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+	// Update transforms
+
+	for (Model::Node& node : model->nodes)
+		drawNode(imageIndex, cmdBuffer, &this->pipeline, node, 1);
 }
 
-bool ym::ModelRenderer::end()
+void ym::ModelRenderer::drawNode(uint32_t imageIndex, CommandBuffer* commandBuffer, Pipeline* pipeline, Model::Node& node, uint32_t instanceCount)
 {
-	VkSemaphore waitSemaphores[] = { this->renderFinishedSemaphores[this->currentFrame] };
-	VkSwapchainKHR swapchain = this->swapChain->getSwapChain();
+	if (node.hasMesh)
+	{
+		// Set transformation matrix
+		//PushConstantData pushConstantData;
+		//pushConstantData.matrix = node.parent != nullptr ? (transform * node.parent->matrix * node.matrix) : (transform * node.matrix);
+		//commandBuffer->cmdPushConstants(pipeline, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData), &pushConstantData);
 
-	VkPresentInfoKHR presentInfo = {};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = waitSemaphores;
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &swapchain;
-	presentInfo.pImageIndices = &this->imageIndex;
+		Mesh& mesh = node.mesh;
+		for (Primitive& primitive : mesh.primitives)
+		{
+			//Material::PushData& pushData = primitive.material->pushData;
+			//commandBuffer->cmdPushConstants(pipeline, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(PushConstantData), sizeof(Material::PushData), &pushData);
 
-	VkResult result = vkQueuePresentKHR(VulkanInstance::get()->getPresentQueue().queue, &presentInfo);
+			std::vector<VkDescriptorSet> sets = { this->descriptorSets[imageIndex].scene, node.descriptorSets[imageIndex], primitive.material->descriptorSets[imageIndex] };
+			std::vector<uint32_t> offsets;
+			commandBuffer->cmdBindDescriptorSets(pipeline, 0, sets, offsets);
 
-	// Check if the window was resized.
-	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-		return false;
+			if (primitive.hasIndices)
+				commandBuffer->cmdDrawIndexed(primitive.indexCount, instanceCount, primitive.firstIndex, 0, 0);
+			else
+				commandBuffer->cmdDraw(primitive.vertexCount, instanceCount, 0, 0);
+		}
 	}
-	YM_ASSERT(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR, "Failed to present image!");
 
-	this->currentFrame = (this->currentFrame + 1) % this->framesInFlight;
-	return true;
+	// Draw child nodes
+	for (Model::Node& child : node.children)
+		drawNode(imageIndex, commandBuffer, pipeline, child, instanceCount);
 }
 
-void ym::ModelRenderer::createSyncObjects()
+void ym::ModelRenderer::createBuffers()
 {
-	this->imageAvailableSemaphores.resize(this->framesInFlight);
-	this->renderFinishedSemaphores.resize(this->framesInFlight);
-	this->inFlightFences.resize(this->framesInFlight);
-	this->imagesInFlight.resize(this->numImages, VK_NULL_HANDLE);
+	// Scene buffer
+	this->sceneUBOs.resize(this->swapChain->getNumImages());
+	for(auto& ubo : this->sceneUBOs)
+		ubo.init(sizeof(SceneData));
+}
 
-	VkSemaphoreCreateInfo SemaCreateInfo = {};
-	SemaCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	VkFenceCreateInfo fenceCreateInfo = {};
-	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+void ym::ModelRenderer::createDescriptorLayouts()
+{
+	// Scene
+	descriptorSetLayouts.scene.add(new UBO(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)); // Camera
+	descriptorSetLayouts.scene.init();
 
-	for (uint32_t i = 0; i < this->framesInFlight; i++) {
-		VULKAN_CHECK(vkCreateSemaphore(VulkanInstance::get()->getLogicalDevice(), &SemaCreateInfo, nullptr, &this->imageAvailableSemaphores[i]), "Failed to create image available semaphores");
-		VULKAN_CHECK(vkCreateSemaphore(VulkanInstance::get()->getLogicalDevice(), &SemaCreateInfo, nullptr, &this->renderFinishedSemaphores[i]), "Failed to create render finished semaphores");
-		VULKAN_CHECK(vkCreateFence(VulkanInstance::get()->getLogicalDevice(), &fenceCreateInfo, nullptr, &this->inFlightFences[i]), "Failed to create in flight fences");
+	// Node
+	descriptorSetLayouts.node.add(new UBO(VK_SHADER_STAGE_VERTEX_BIT)); // Node transform
+	descriptorSetLayouts.node.init();
+
+	// Material
+	descriptorSetLayouts.material.add(new IMG(VK_SHADER_STAGE_FRAGMENT_BIT)); // BaseColor
+	descriptorSetLayouts.material.add(new IMG(VK_SHADER_STAGE_FRAGMENT_BIT)); // MetallicRoughness
+	descriptorSetLayouts.material.add(new IMG(VK_SHADER_STAGE_FRAGMENT_BIT)); // NormalTexture
+	descriptorSetLayouts.material.add(new IMG(VK_SHADER_STAGE_FRAGMENT_BIT)); // OcclusionTexture
+	descriptorSetLayouts.material.add(new IMG(VK_SHADER_STAGE_FRAGMENT_BIT)); // EmissiveTexture
+	descriptorSetLayouts.material.init();
+}
+
+void ym::ModelRenderer::recreateDescriptorPool(uint32_t materialCount, uint32_t nodeCount)
+{
+	// Destroy the descriptor pool and its descriptor sets if it should be recreated.
+	if (this->descriptorPool != VK_NULL_HANDLE)
+		vkDestroyDescriptorPool(VulkanInstance::get()->getLogicalDevice(), this->descriptorPool, nullptr);
+
+	uint32_t numFrames = this->swapChain->getNumImages();
+
+	// Function to fill poolSizesMap with new data. (Accumulative)
+	std::unordered_map<VkDescriptorType, uint32_t> poolSizesMap;
+	auto addToMap = [&](std::vector<VkDescriptorPoolSize> & poolSizes, uint32_t multiplier) {
+		for (VkDescriptorPoolSize& s : poolSizes)
+		{
+			auto& it = poolSizesMap.find(s.type);
+			if (it == poolSizesMap.end()) poolSizesMap[s.type] = s.descriptorCount * multiplier;
+			else it->second += s.descriptorCount * multiplier;
+		}
+	};
+
+	// Add pool sizes from each descriptor set.
+	addToMap(descriptorSetLayouts.scene.getPoolSizes(1), 1);
+	// There are many nodes with its own data => own descriptor set, multiply with the number of nodes.
+	addToMap(descriptorSetLayouts.node.getPoolSizes(1), nodeCount);
+	// Same for the material but multiply instead with the number of materials.
+	addToMap(descriptorSetLayouts.material.getPoolSizes(1), materialCount);
+
+	std::vector<VkDescriptorPoolSize> poolSizes;
+	for (auto m : poolSizesMap)
+		poolSizes.push_back({ m.first, m.second * numFrames });
+
+	// Create descriptor pool.
+	VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
+	descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+	descriptorPoolInfo.pPoolSizes = poolSizes.data();
+	descriptorPoolInfo.maxSets = (1 + nodeCount + materialCount) * numFrames;
+	VULKAN_CHECK(vkCreateDescriptorPool(VulkanInstance::get()->getLogicalDevice(), &descriptorPoolInfo, nullptr, &this->descriptorPool), "Could not create descriptor pool!");
+}
+
+void ym::ModelRenderer::createDescriptorsSets(std::map<uint64_t, DrawData>& drawBatch)
+{
+	VkDevice device = VulkanInstance::get()->getLogicalDevice();
+
+	// Scene
+	this->descriptorSets.resize(this->swapChain->getNumImages());
+	for(size_t i = 0; i < this->descriptorSets.size(); i++)
+	{
+		VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
+		descriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		descriptorSetAllocInfo.descriptorPool = this->descriptorPool;
+		VkDescriptorSetLayout descriptorSetLayout = descriptorSetLayouts.scene.getLayout();
+		descriptorSetAllocInfo.pSetLayouts = &descriptorSetLayout;
+		descriptorSetAllocInfo.descriptorSetCount = 1;
+		VULKAN_CHECK(vkAllocateDescriptorSets(device, &descriptorSetAllocInfo, &this->descriptorSets[i].scene), "Could not create descriptor set [{0}] for the scene!", i);
+
+		std::array<VkWriteDescriptorSet, 1> writeDescriptorSets{};
+
+		writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		writeDescriptorSets[0].descriptorCount = 1;
+		writeDescriptorSets[0].dstSet = descriptorSets[i].scene;
+		writeDescriptorSets[0].dstBinding = 0;
+		VkDescriptorBufferInfo descriptor = sceneUBOs[i].getDescriptor();
+		writeDescriptorSets[0].pBufferInfo = &descriptor;
+
+		vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
+	}
+
+	// Nodes and Materials
+	for (auto& drawData : drawBatch)
+	{
+		// Nodes
+		std::vector<Model::Node>& nodes = drawData.second.model->nodes;
+		for(Model::Node& node : nodes)
+			createNodeDescriptorsSets(node);
+
+		// Materials
+		std::vector<Material>& materials = drawData.second.model->materials;
+		for (Material& material : materials)
+		{
+			if (material.descriptorSets.empty())
+			{
+				// Create descriptor sets for each material.
+				material.descriptorSets.resize(this->swapChain->getNumImages());
+				for (uint32_t i = 0; i < this->swapChain->getNumImages(); i++)
+				{
+					VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
+					descriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+					descriptorSetAllocInfo.descriptorPool = descriptorPool;
+					VkDescriptorSetLayout descriptorSetLayout = descriptorSetLayouts.material.getLayout();
+					descriptorSetAllocInfo.pSetLayouts = &descriptorSetLayout;
+					descriptorSetAllocInfo.descriptorSetCount = 1;
+					VULKAN_CHECK(vkAllocateDescriptorSets(device, &descriptorSetAllocInfo, &material.descriptorSets[i]), "Could not create descriptor set for material!");
+				
+					std::vector<Material::Tex> textures = {
+						material.baseColorTexture,
+						material.metallicRoughnessTexture,
+						material.normalTexture,
+						material.occlusionTexture,
+						material.emissiveTexture
+					};
+
+					std::array<VkWriteDescriptorSet, 5> writeDescriptorSets{};
+					for (size_t j = 0; j < textures.size(); j++) {
+
+						Material::Tex& tex = textures[j];
+						VkDescriptorImageInfo imageInfo;
+						imageInfo.imageLayout = tex.texture->image.getLayout();
+						imageInfo.imageView = tex.texture->imageView.getImageView();
+						imageInfo.sampler = tex.sampler->getSampler();
+
+						writeDescriptorSets[j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+						writeDescriptorSets[j].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+						writeDescriptorSets[j].descriptorCount = 1;
+						writeDescriptorSets[j].dstSet = material.descriptorSets[i];
+						writeDescriptorSets[j].dstBinding = static_cast<uint32_t>(j);
+						writeDescriptorSets[j].pImageInfo = &imageInfo;
+					}
+
+					vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
+				}
+			}
+		}
 	}
 }
 
-void ym::ModelRenderer::destroySyncObjects()
+void ym::ModelRenderer::createNodeDescriptorsSets(Model::Node& node)
 {
-	for (uint32_t i = 0; i < this->framesInFlight; i++) {
-		vkDestroySemaphore(VulkanInstance::get()->getLogicalDevice(), this->imageAvailableSemaphores[i], nullptr);
-		vkDestroySemaphore(VulkanInstance::get()->getLogicalDevice(), this->renderFinishedSemaphores[i], nullptr);
-		vkDestroyFence(VulkanInstance::get()->getLogicalDevice(), this->inFlightFences[i], nullptr);
+	// Create uniform buffers if not created.
+	if (node.uniformBuffers.empty())
+	{
+		node.uniformBuffers.resize(this->swapChain->getNumImages());
+		for (uint32_t i = 0; i < this->swapChain->getNumImages(); i++)
+		{
+			node.uniformBuffers[i].init(sizeof(Model::Node::NodeData));
+			Model::Node::NodeData data;
+			data.transform = node.matrix;
+			node.uniformBuffers[i].transfer(&data, sizeof(data), 0);
+		}
 	}
+
+	for (uint32_t i = 0; i < this->swapChain->getNumImages(); i++)
+	{
+		VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
+		descriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		descriptorSetAllocInfo.descriptorPool = this->descriptorPool;
+		VkDescriptorSetLayout descriptorSetLayout = descriptorSetLayouts.node.getLayout();
+		descriptorSetAllocInfo.pSetLayouts = &descriptorSetLayout;
+		descriptorSetAllocInfo.descriptorSetCount = 1;
+		VULKAN_CHECK(vkAllocateDescriptorSets(VulkanInstance::get()->getLogicalDevice(), &descriptorSetAllocInfo, &node.descriptorSets[i]), "Could not create descriptor set [{0}] for the node!", i);
+	
+		std::array<VkWriteDescriptorSet, 1> writeDescriptorSets{};
+
+		writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		writeDescriptorSets[0].descriptorCount = 1;
+		writeDescriptorSets[0].dstSet = descriptorSets[i].scene;
+		writeDescriptorSets[0].dstBinding = 0;
+		VkDescriptorBufferInfo descriptor = node.uniformBuffers[i].getDescriptor();
+		writeDescriptorSets[0].pBufferInfo = &descriptor;
+
+		vkUpdateDescriptorSets(VulkanInstance::get()->getLogicalDevice(), static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
+	}
+	for (Model::Node& child : node.children)
+		createNodeDescriptorsSets(child);
 }

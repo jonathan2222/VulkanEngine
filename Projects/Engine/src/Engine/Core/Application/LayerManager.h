@@ -25,7 +25,7 @@ namespace ym
 		void pop();
 
 		// Initiate all layers
-		void onStart();
+		void onStart(Renderer* renderer);
 		// Update the active layer
 		void onUpdate(float dt);
 		// Render the active layer

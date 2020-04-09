@@ -2,6 +2,7 @@
 
 #include "../../Vulkan/Buffers/Memory.h"
 #include "../../Vulkan/Buffers/Buffer.h"
+#include "../../Vulkan/Buffers/UniformBuffer.h"
 #include "../../Vulkan/Texture.h"
 #include "../../Vulkan/Sampler.h"
 #include "Material.h"
@@ -67,6 +68,11 @@ namespace ym
 	public:
 		struct Node
 		{
+			struct NodeData
+			{
+				glm::mat4 transform;
+			};
+
 			bool hasMesh{ false };
 			Mesh mesh;
 			glm::vec3 translation;
@@ -76,6 +82,8 @@ namespace ym
 			std::vector<Node> children;
 			Node* parent{ nullptr };
 			Model* model;
+			std::vector<VkDescriptorSet> descriptorSets; // Only holds matrix right now.
+			std::vector<UniformBuffer> uniformBuffers;	 // For the matrix.
 		};
 
 	public:
@@ -86,6 +94,7 @@ namespace ym
 
 		// Layout
 		std::vector<Node> nodes;
+		uint32_t numMeshes;
 
 		// Data
 		std::vector<uint32_t> indices;
@@ -104,5 +113,8 @@ namespace ym
 		bool hasMaterialMemory{ false };
 		Memory materialMemory;
 		std::vector<Material> materials;
+
+	private:
+		void destroyNode(Node& node);
 	};
 }

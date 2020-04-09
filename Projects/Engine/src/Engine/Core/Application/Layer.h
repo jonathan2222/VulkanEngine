@@ -15,7 +15,7 @@ namespace ym
 		Layer();
 		virtual ~Layer();
 
-		virtual void onStart() = 0;
+		virtual void onStart(ym::Renderer* renderer) = 0;
 		virtual void onUpdate(float dt) = 0;
 		virtual void onRender(Renderer* renderer) = 0;
 		virtual void onRenderImGui() = 0;

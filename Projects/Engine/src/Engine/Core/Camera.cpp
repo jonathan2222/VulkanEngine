@@ -42,6 +42,7 @@ void ym::Camera::updateProj()
 	// TODO: Make it possible to change the type of projection!!
 	float aspectRatio = Display::get()->getAspectRatio();
 	m_proj = glm::perspectiveRH(m_fov, aspectRatio, m_nearPlane, m_farPlane);
+	m_proj[1][1] *= -1;
 }
 
 glm::vec3 ym::Camera::getUp() const

@@ -5,6 +5,8 @@
 #include "Buffers/Buffer.h"
 #include "Buffers/Memory.h"
 #include "VulkanInstance.h"
+#include "Sampler.h"
+#include "Texture.h"
 
 namespace ym
 {

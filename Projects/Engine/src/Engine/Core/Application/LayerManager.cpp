@@ -37,10 +37,10 @@ void ym::LayerManager::pop()
 	this->layers.pop_back();
 }
 
-void ym::LayerManager::onStart()
+void ym::LayerManager::onStart(Renderer* renderer)
 {
 	for (Layer*& layer : this->layers)
-		layer->onStart();
+		layer->onStart(renderer);
 }
 
 void ym::LayerManager::onUpdate(float dt)

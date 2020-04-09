@@ -61,7 +61,7 @@ void ym::App::run()
 	bool activateImGUI = Config::get()->fetch<bool>("Debuglayer/active");
 
 	// Initiate layers
-	this->layerManager->onStart();
+	this->layerManager->onStart(&this->renderer);
 
 	YM_PROFILER_END_SESSION();
 

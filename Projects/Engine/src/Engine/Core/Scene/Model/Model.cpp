@@ -15,6 +15,9 @@ namespace ym
 
 	void Model::destroy()
 	{
+		for (Node& node : this->nodes)
+			destroyNode(node);
+
 		if (this->indices.empty() == false)
 			this->indexBuffer.destroy();
 		if (this->vertices.empty() == false)
@@ -34,5 +37,13 @@ namespace ym
 
 		for (Sampler& sampler : this->samplers)
 			sampler.destroy();
+	}
+
+	void Model::destroyNode(Node& node)
+	{
+		for (UniformBuffer& ub : node.uniformBuffers)
+			ub.destroy();
+		for (Node& child : node.children)
+			destroyNode(child);
 	}
 }

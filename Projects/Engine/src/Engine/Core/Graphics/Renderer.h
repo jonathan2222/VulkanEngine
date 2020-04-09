@@ -17,10 +17,37 @@ namespace ym
 		void init();
 		void destroy();
 
+		/*
+			Begin frame. Will return true if succeeded, false if the swap chain needs to be recreated.
+		*/
+		bool begin();
+		
+		/*
+			Draw the specified model.
+		*/
+		void drawModel(Model* model, const glm::mat4& transform);
+
+		/*
+			End frame. Will return true if succeeded, false if the swap chain needs to be recreated.
+		*/
+		bool end();
+
+	private:
+		enum ERendererType
+		{
+			RENDER_TYPE_MODEL = 0,
+			RENDER_TYPE_SIZE
+		};
+
 	private:
 		void createDepthTexture();
 		void createRenderPass();
 		void createFramebuffers(VkImageView depthAttachment);
+
+		void createSyncObjects();
+		void destroySyncObjects();
+
+		void submit();
 
 	private:
 		SwapChain swapChain;
@@ -29,5 +56,19 @@ namespace ym
 		Texture* depthTexture;
 
 		ModelRenderer modelRenderer;
+
+		// Recording
+		std::vector<CommandBuffer*> primaryCommandBuffers;
+		VkCommandBufferInheritanceInfo inheritanceInfo;
+
+		// Sync objects
+		std::vector<VkSemaphore> imageAvailableSemaphores;
+		std::vector<VkSemaphore> renderFinishedSemaphores;
+		std::vector<VkFence> inFlightFences;
+		std::vector<VkFence> imagesInFlight;
+		uint32_t framesInFlight;
+		uint32_t currentFrame;
+		uint32_t imageIndex;
+		uint32_t numImages;
 	};
 }

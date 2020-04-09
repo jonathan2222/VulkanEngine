@@ -13,6 +13,14 @@
 			this->pImmutableSamplers = pImmutableSamplers; \
 			this->binding = UINT32_MAX; \
 		} \
+		name(VkShaderStageFlags stageFlags) \
+		{ \
+			this->descriptorType = type; \
+			this->descriptorCount = 1; \
+			this->stageFlags = stageFlags; \
+			this->pImmutableSamplers = nullptr; \
+			this->binding = UINT32_MAX; \
+		} \
 	}; \
 
 namespace ym

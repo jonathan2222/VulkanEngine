@@ -187,7 +187,11 @@ namespace ym
 		}
 		model.imageMemory.init(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		for (Texture& texture : model.textures)
+		{
 			texture.imageView.init(texture.image.getImage(), VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+			texture.descriptor.imageView = texture.imageView.getImageView();
+			texture.descriptor.imageLayout = texture.image.getLayout();
+		}
 
 		uint64_t textureSize = 0;
 		for (Texture& texture : model.textures)
@@ -438,6 +442,8 @@ namespace ym
 		node->hasMesh = gltfNode.mesh != -1;
 		if (node->hasMesh)
 		{
+			model.numMeshes++;
+
 			tinygltf::Mesh gltfMesh = gltfModel.meshes[gltfNode.mesh];
 			Mesh& mesh = node->mesh;
 			mesh.name = gltfMesh.name;
@@ -579,6 +585,8 @@ namespace ym
 
 	void GLTFLoader::loadScenes(Model & model, tinygltf::Model & gltfModel, StagingBuffers * stagingBuffers)
 	{
+		model.numMeshes = 0;
+
 		for (auto& scene : gltfModel.scenes)
 		{
 			//JAS_INFO("Scene: {0}", scene.name.c_str());

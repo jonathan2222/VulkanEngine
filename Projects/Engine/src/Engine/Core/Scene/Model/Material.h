@@ -9,6 +9,8 @@ namespace ym
 	class Sampler;
 	struct Material
 	{
+		std::vector<VkDescriptorSet> descriptorSets;
+
 		struct Tex
 		{
 			Texture* texture;

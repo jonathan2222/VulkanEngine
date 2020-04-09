@@ -7,7 +7,7 @@ class SandboxLayer : public ym::Layer
 {
 public:
 
-	void onStart() override;
+	void onStart(ym::Renderer* renderer) override;
 	void onUpdate(float dt) override;
 	void onRender(ym::Renderer* renderer) override;
 	void onRenderImGui() override;
