@@ -138,6 +138,7 @@ void ym::App::run()
 	YM_PROFILER_BEGIN_SESSION("Quit", "CPU_Profiler_Quit.json");
 
 	// Shutdown layers
+	this->renderer.preDestroy();
 	this->layerManager->onQuit();
 }
 

@@ -16,6 +16,7 @@ namespace ym
 		virtual ~Renderer();
 
 		void init();
+		void preDestroy();
 		void destroy();
 
 		void setCamera(Camera* camera);

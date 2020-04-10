@@ -24,6 +24,7 @@ void ym::UniformBuffer::destroy()
 	{
 		this->buffer.destroy();
 		this->memory.destroy();
+		this->wasCreated = false;
 	}
 }
 
@@ -35,4 +36,9 @@ void ym::UniformBuffer::transfer(void* data, uint64_t size, uint64_t offset)
 VkDescriptorBufferInfo ym::UniformBuffer::getDescriptor() const
 {
 	return this->descriptor;
+}
+
+bool ym::UniformBuffer::isInitialized() const
+{
+	return this->wasCreated;
 }

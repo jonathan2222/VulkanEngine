@@ -27,17 +27,17 @@ namespace ym
 		
 		void setCamera(Camera* camera);
 
-		void begin(VkCommandBufferInheritanceInfo inheritanceInfo);
+		void begin(uint32_t imageIndex, VkCommandBufferInheritanceInfo inheritanceInfo);
 
 		/*
 			Draw the specified model.
 		*/
-		void drawModel(Model* model, const glm::mat4& transform);
+		void drawModel(uint32_t imageIndex, Model* model, const glm::mat4& transform);
 
 		/*
 			Draw instanced model.
 		*/
-		void drawModel(Model* model, const std::vector<glm::mat4>& transforms);
+		void drawModel(uint32_t imageIndex, Model* model, const std::vector<glm::mat4>& transforms);
 
 		void end(uint32_t imageIndex);
 
@@ -66,18 +66,18 @@ namespace ym
 		
 		void createBuffers();
 		void createDescriptorLayouts();
-		void recreateDescriptorPool(uint32_t materialCount, uint32_t nodeCount, uint32_t modelCount);
-		void createDescriptorsSets(std::map<uint64_t, DrawData>& drawBatch);
-		void createNodeDescriptorsSets(Model::Node& node);
+		void recreateDescriptorPool(uint32_t imageIndex, uint32_t materialCount, uint32_t nodeCount, uint32_t modelCount);
+		void createDescriptorsSets(uint32_t imageIndex, std::map<uint64_t, DrawData>& drawBatch);
+		void createNodeDescriptorsSets(uint32_t imageIndex, Model::Node& node);
 
 		uint64_t getUniqueId(uint32_t modelId, uint32_t instanceCount);
-		void addModelToBatch(DrawData& drawData);
+		void addModelToBatch(uint32_t imageIndex, DrawData& drawData);
 
 	private:
 		SwapChain* swapChain;
 
-		bool shouldRecreateDescriptors;
-		std::map<uint64_t, DrawData> drawBatch;
+		std::vector<bool> shouldRecreateDescriptors;
+		std::vector<std::map<uint64_t, DrawData>> drawBatch;
 		VkCommandBufferInheritanceInfo inheritanceInfo;
 
 		Camera* activeCamera{nullptr};
@@ -86,7 +86,7 @@ namespace ym
 		std::vector<UniformBuffer> sceneUBOs;
 
 		// Descriptors
-		VkDescriptorPool descriptorPool;
+		std::vector<VkDescriptorPool> descriptorPools;
 		struct DescriptorSetLayouts
 		{
 			DescriptorLayout scene;		// Holds camera data and other global data for the scene.

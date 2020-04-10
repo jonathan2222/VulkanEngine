@@ -16,5 +16,6 @@ public:
 
 private:
 	ym::Model model;
+	ym::Model cubeModel;
 	ym::Camera camera;
 };

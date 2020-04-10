@@ -16,6 +16,8 @@ namespace ym
 
 		VkDescriptorBufferInfo getDescriptor() const;
 
+		bool isInitialized() const;
+
 	private:
 		bool wasCreated{false};
 		Buffer buffer;

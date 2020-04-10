@@ -39,10 +39,14 @@ void ym::Renderer::init()
 	this->primaryCommandBuffers = graphicsPool.createCommandBuffers(this->swapChain.getNumImages(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 }
 
+void ym::Renderer::preDestroy()
+{
+	vkDeviceWaitIdle(VulkanInstance::get()->getLogicalDevice());
+	ThreadManager::destroy();
+}
+
 void ym::Renderer::destroy()
 {
-	ThreadManager::destroy();
-
 	GLTFLoader::destroyDefaultData();
 
 	this->modelRenderer.destroy();
@@ -88,7 +92,7 @@ bool ym::Renderer::begin()
 	this->inheritanceInfo.framebuffer = this->framebuffers[this->imageIndex].getFramebuffer();
 	this->inheritanceInfo.renderPass = this->renderPass.getRenderPass();
 
-	this->modelRenderer.begin(this->inheritanceInfo);
+	this->modelRenderer.begin(this->imageIndex, this->inheritanceInfo);
 
 	return true;
 }
@@ -96,12 +100,12 @@ bool ym::Renderer::begin()
 void ym::Renderer::drawModel(Model* model, const glm::mat4& transform)
 {
 	// Add model for drawing.
-	this->modelRenderer.drawModel(model, transform);
+	this->modelRenderer.drawModel(this->imageIndex, model, transform);
 }
 
 void ym::Renderer::drawModel(Model* model, const std::vector<glm::mat4>& transforms)
 {
-	this->modelRenderer.drawModel(model, transforms);
+	this->modelRenderer.drawModel(this->imageIndex, model, transforms);
 }
 
 bool ym::Renderer::end()

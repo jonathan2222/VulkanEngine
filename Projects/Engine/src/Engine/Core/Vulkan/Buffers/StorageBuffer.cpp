@@ -24,6 +24,7 @@ void ym::StorageBuffer::destroy()
 	{
 		this->buffer.destroy();
 		this->memory.destroy();
+		this->wasCreated = false;
 	}
 }
 

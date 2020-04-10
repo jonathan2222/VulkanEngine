@@ -6,8 +6,6 @@ ym::ModelRenderer::ModelRenderer()
 {
 	this->threadID = 0;
 	this->swapChain = nullptr;
-	this->descriptorPool = VK_NULL_HANDLE;
-	this->shouldRecreateDescriptors = false;
 }
 
 ym::ModelRenderer::~ModelRenderer()
@@ -31,6 +29,10 @@ void ym::ModelRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass
 	this->shader.addStage(Shader::Type::FRAGMENT, YM_ASSETS_FILE_PATH + "Shaders/pbrTestFrag.spv");
 	this->shader.init();
 
+	this->shouldRecreateDescriptors.resize(this->swapChain->getNumImages(), false);
+	this->descriptorPools.resize(this->swapChain->getNumImages(), VK_NULL_HANDLE);
+	this->descriptorSets.resize(this->swapChain->getNumImages());
+
 	createDescriptorLayouts();
 	std::vector<DescriptorLayout> descriptorLayouts = { descriptorSetLayouts.scene, descriptorSetLayouts.node, descriptorSetLayouts.material, descriptorSetLayouts.model };
 	VkVertexInputBindingDescription vertexBindingDescriptions = Vertex::getBindingDescriptions();
@@ -53,8 +55,24 @@ void ym::ModelRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass
 
 void ym::ModelRenderer::destroy()
 {
+	this->shader.destroy();
+	this->pipeline.destroy();
 	this->commandPool.destroy();
-	vkDestroyDescriptorPool(VulkanInstance::get()->getLogicalDevice(), this->descriptorPool, nullptr);
+	for(VkDescriptorPool pool : this->descriptorPools)
+		vkDestroyDescriptorPool(VulkanInstance::get()->getLogicalDevice(), pool, nullptr);
+
+	;
+	vkDestroyDescriptorSetLayout(VulkanInstance::get()->getLogicalDevice(), this->descriptorSetLayouts.scene.getLayout(), nullptr);
+	vkDestroyDescriptorSetLayout(VulkanInstance::get()->getLogicalDevice(), this->descriptorSetLayouts.model.getLayout(), nullptr);
+	vkDestroyDescriptorSetLayout(VulkanInstance::get()->getLogicalDevice(), this->descriptorSetLayouts.node.getLayout(), nullptr);
+	vkDestroyDescriptorSetLayout(VulkanInstance::get()->getLogicalDevice(), this->descriptorSetLayouts.material.getLayout(), nullptr);
+
+	for (auto& batch : this->drawBatch)
+		for (auto& drawData : batch)
+			drawData.second.transformsBuffer.destroy();
+
+	for (UniformBuffer& ubo : this->sceneUBOs)
+		ubo.destroy();
 }
 
 void ym::ModelRenderer::setCamera(Camera* camera)
@@ -62,33 +80,33 @@ void ym::ModelRenderer::setCamera(Camera* camera)
 	this->activeCamera = camera;
 }
 
-void ym::ModelRenderer::begin(VkCommandBufferInheritanceInfo inheritanceInfo)
+void ym::ModelRenderer::begin(uint32_t imageIndex, VkCommandBufferInheritanceInfo inheritanceInfo)
 {
 	this->inheritanceInfo = inheritanceInfo;
 
 	// Clear draw data if descriptor pool should be recreated.
-	if (this->shouldRecreateDescriptors)
+	if (this->shouldRecreateDescriptors[imageIndex])
 	{
-		for (auto& drawData : this->drawBatch)
+		for (auto& drawData : this->drawBatch[imageIndex])
 			drawData.second.transformsBuffer.destroy();
-		this->drawBatch.clear();
+		this->drawBatch[imageIndex].clear();
 	}
 }
 
-void ym::ModelRenderer::drawModel(Model* model, const glm::mat4& transform)
+void ym::ModelRenderer::drawModel(uint32_t imageIndex, Model* model, const glm::mat4& transform)
 {
 	DrawData drawData = {};
 	drawData.model = model;
 	drawData.transforms.push_back(transform);
-	addModelToBatch(drawData);
+	addModelToBatch(imageIndex, drawData);
 }
 
-void ym::ModelRenderer::drawModel(Model* model, const std::vector<glm::mat4>& transforms)
+void ym::ModelRenderer::drawModel(uint32_t imageIndex, Model* model, const std::vector<glm::mat4>& transforms)
 {
 	DrawData drawData = {};
 	drawData.model = model;
 	drawData.transforms.insert(drawData.transforms.begin(), transforms.begin(), transforms.end());
-	addModelToBatch(drawData);
+	addModelToBatch(imageIndex, drawData);
 }
 
 void ym::ModelRenderer::end(uint32_t imageIndex)
@@ -100,30 +118,30 @@ void ym::ModelRenderer::end(uint32_t imageIndex)
 	sceneData.cPos = this->activeCamera->getPosition();
 	this->sceneUBOs[imageIndex].transfer(&sceneData, sizeof(SceneData), 0);
 
-	if (this->shouldRecreateDescriptors)
+	if (this->shouldRecreateDescriptors[imageIndex])
 	{
 		// Fetch number of nodes and materials.
 		uint32_t modelCount = 0;
 		uint32_t nodeCount = 0;
 		uint32_t materialCount = 0;
-		for (auto& drawData : this->drawBatch)
+		for (auto& drawData : this->drawBatch[imageIndex])
 		{
 			modelCount++;
 			nodeCount += drawData.second.model->numMeshes;
 			materialCount += static_cast<uint32_t>(drawData.second.model->materials.size());
 		}
-		recreateDescriptorPool(materialCount, nodeCount, modelCount);
+		recreateDescriptorPool(imageIndex, materialCount, nodeCount, modelCount);
 
 		// Recreate descriptor sets
-		createDescriptorsSets(this->drawBatch);
+		createDescriptorsSets(imageIndex, this->drawBatch[imageIndex]);
 
-		this->shouldRecreateDescriptors = false;
+		this->shouldRecreateDescriptors[imageIndex] = false;
 	}
 
 	// Start recording all draw commands on the thread.
 	CommandBuffer* currentBuffer = commandBuffers[imageIndex];
 	currentBuffer->begin(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, &inheritanceInfo);
-	for (auto& drawData : this->drawBatch)
+	for (auto& drawData : this->drawBatch[imageIndex])
 	{
 		uint32_t instanceCount = (uint32_t)drawData.second.transforms.size();
 		drawData.second.transformsBuffer.transfer(drawData.second.transforms.data(), sizeof(glm::mat4)*instanceCount, 0);
@@ -225,11 +243,11 @@ void ym::ModelRenderer::createDescriptorLayouts()
 	descriptorSetLayouts.material.init();
 }
 
-void ym::ModelRenderer::recreateDescriptorPool(uint32_t materialCount, uint32_t nodeCount, uint32_t modelCount)
+void ym::ModelRenderer::recreateDescriptorPool(uint32_t imageIndex, uint32_t materialCount, uint32_t nodeCount, uint32_t modelCount)
 {
 	// Destroy the descriptor pool and its descriptor sets if it should be recreated.
-	if (this->descriptorPool != VK_NULL_HANDLE)
-		vkDestroyDescriptorPool(VulkanInstance::get()->getLogicalDevice(), this->descriptorPool, nullptr);
+	if (this->descriptorPools[imageIndex] != VK_NULL_HANDLE)
+		vkDestroyDescriptorPool(VulkanInstance::get()->getLogicalDevice(), this->descriptorPools[imageIndex], nullptr);
 
 	uint32_t numFrames = this->swapChain->getNumImages();
 
@@ -263,33 +281,31 @@ void ym::ModelRenderer::recreateDescriptorPool(uint32_t materialCount, uint32_t 
 	descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 	descriptorPoolInfo.pPoolSizes = poolSizes.data();
 	descriptorPoolInfo.maxSets = (1 + modelCount + nodeCount + materialCount) * numFrames;
-	VULKAN_CHECK(vkCreateDescriptorPool(VulkanInstance::get()->getLogicalDevice(), &descriptorPoolInfo, nullptr, &this->descriptorPool), "Could not create descriptor pool!");
+	VULKAN_CHECK(vkCreateDescriptorPool(VulkanInstance::get()->getLogicalDevice(), &descriptorPoolInfo, nullptr, &this->descriptorPools[imageIndex]), "Could not create descriptor pool!");
 }
 
-void ym::ModelRenderer::createDescriptorsSets(std::map<uint64_t, DrawData>& drawBatch)
+void ym::ModelRenderer::createDescriptorsSets(uint32_t imageIndex, std::map<uint64_t, DrawData>& drawBatch)
 {
 	VkDevice device = VulkanInstance::get()->getLogicalDevice();
 
 	// Scene
-	this->descriptorSets.resize(this->swapChain->getNumImages());
-	for(size_t i = 0; i < this->descriptorSets.size(); i++)
 	{
 		VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
 		descriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		descriptorSetAllocInfo.descriptorPool = this->descriptorPool;
+		descriptorSetAllocInfo.descriptorPool = this->descriptorPools[imageIndex];
 		VkDescriptorSetLayout descriptorSetLayout = descriptorSetLayouts.scene.getLayout();
 		descriptorSetAllocInfo.pSetLayouts = &descriptorSetLayout;
 		descriptorSetAllocInfo.descriptorSetCount = 1;
-		VULKAN_CHECK(vkAllocateDescriptorSets(device, &descriptorSetAllocInfo, &this->descriptorSets[i].scene), "Could not create descriptor set for the scene!");
+		VULKAN_CHECK(vkAllocateDescriptorSets(device, &descriptorSetAllocInfo, &this->descriptorSets[imageIndex].scene), "Could not create descriptor set for the scene!");
 
 		std::array<VkWriteDescriptorSet, 1> writeDescriptorSets{};
 
 		writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		writeDescriptorSets[0].descriptorCount = 1;
-		writeDescriptorSets[0].dstSet = descriptorSets[i].scene;
+		writeDescriptorSets[0].dstSet = descriptorSets[imageIndex].scene;
 		writeDescriptorSets[0].dstBinding = 0;
-		VkDescriptorBufferInfo descriptor = sceneUBOs[i].getDescriptor();
+		VkDescriptorBufferInfo descriptor = sceneUBOs[imageIndex].getDescriptor();
 		writeDescriptorSets[0].pBufferInfo = &descriptor;
 
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
@@ -302,7 +318,7 @@ void ym::ModelRenderer::createDescriptorsSets(std::map<uint64_t, DrawData>& draw
 		{
 			VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
 			descriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			descriptorSetAllocInfo.descriptorPool = this->descriptorPool;
+			descriptorSetAllocInfo.descriptorPool = this->descriptorPools[imageIndex];
 			VkDescriptorSetLayout descriptorSetLayout = descriptorSetLayouts.model.getLayout();
 			descriptorSetAllocInfo.pSetLayouts = &descriptorSetLayout;
 			descriptorSetAllocInfo.descriptorSetCount = 1;
@@ -324,13 +340,16 @@ void ym::ModelRenderer::createDescriptorsSets(std::map<uint64_t, DrawData>& draw
 		// Nodes
 		std::vector<Model::Node>& nodes = drawData.second.model->nodes;
 		for(Model::Node& node : nodes)
-			createNodeDescriptorsSets(node);
+			createNodeDescriptorsSets(imageIndex, node);
 
 		// Materials
 		std::vector<Material>& materials = drawData.second.model->materials;
 		for (Material& material : materials)
 		{
-			if (material.descriptorSets.empty())
+			if(material.descriptorSets.empty())
+				material.descriptorSets.resize(this->swapChain->getNumImages(), VK_NULL_HANDLE);
+
+			//if (material.descriptorSets[imageIndex] == VK_NULL_HANDLE)
 			{
 				// Create descriptor sets for each material.
 				std::vector<Material::Tex> textures = {
@@ -350,16 +369,15 @@ void ym::ModelRenderer::createDescriptorsSets(std::map<uint64_t, DrawData>& draw
 					imageInfos[j].sampler = tex.sampler->getSampler();
 				}
 
-				material.descriptorSets.resize(this->swapChain->getNumImages());
-				for (uint32_t i = 0; i < this->swapChain->getNumImages(); i++)
+				//for (uint32_t i = 0; i < this->swapChain->getNumImages(); i++)
 				{
 					VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
 					descriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-					descriptorSetAllocInfo.descriptorPool = descriptorPool;
+					descriptorSetAllocInfo.descriptorPool = descriptorPools[imageIndex];
 					VkDescriptorSetLayout descriptorSetLayout = descriptorSetLayouts.material.getLayout();
 					descriptorSetAllocInfo.pSetLayouts = &descriptorSetLayout;
 					descriptorSetAllocInfo.descriptorSetCount = 1;
-					VULKAN_CHECK(vkAllocateDescriptorSets(device, &descriptorSetAllocInfo, &material.descriptorSets[i]), "Could not create descriptor set for material!");
+					VULKAN_CHECK(vkAllocateDescriptorSets(device, &descriptorSetAllocInfo, &material.descriptorSets[imageIndex]), "Could not create descriptor set for material!");
 
 					/*std::array<VkWriteDescriptorSet, 5> writeDescriptorSets{};
 					for (size_t j = 0; j < textures.size(); j++) {
@@ -385,7 +403,7 @@ void ym::ModelRenderer::createDescriptorsSets(std::map<uint64_t, DrawData>& draw
 					writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 					writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 					writeDescriptorSet.descriptorCount = static_cast<uint32_t>(imageInfos.size());
-					writeDescriptorSet.dstSet = material.descriptorSets[i];
+					writeDescriptorSet.dstSet = material.descriptorSets[imageIndex];
 					writeDescriptorSet.dstBinding = 0;
 					writeDescriptorSet.pImageInfo = imageInfos.data();
 
@@ -396,46 +414,45 @@ void ym::ModelRenderer::createDescriptorsSets(std::map<uint64_t, DrawData>& draw
 	}
 }
 
-void ym::ModelRenderer::createNodeDescriptorsSets(Model::Node& node)
+void ym::ModelRenderer::createNodeDescriptorsSets(uint32_t imageIndex, Model::Node& node)
 {
 	// Create uniform buffers if not created.
 	if (node.uniformBuffers.empty())
 	{
 		node.uniformBuffers.resize(this->swapChain->getNumImages());
-		for (uint32_t i = 0; i < this->swapChain->getNumImages(); i++)
-		{
-			node.uniformBuffers[i].init(sizeof(Model::Node::NodeData));
-			Model::Node::NodeData data;
-			data.transform = node.matrix;
-			node.uniformBuffers[i].transfer(&data, sizeof(data), 0);
-		}
 	}
-
-	node.descriptorSets.resize(this->swapChain->getNumImages());
-	for (uint32_t i = 0; i < this->swapChain->getNumImages(); i++)
+	if (node.uniformBuffers[imageIndex].isInitialized() == false)
 	{
-		VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
-		descriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		descriptorSetAllocInfo.descriptorPool = this->descriptorPool;
-		VkDescriptorSetLayout descriptorSetLayout = descriptorSetLayouts.node.getLayout();
-		descriptorSetAllocInfo.pSetLayouts = &descriptorSetLayout;
-		descriptorSetAllocInfo.descriptorSetCount = 1;
-		VULKAN_CHECK(vkAllocateDescriptorSets(VulkanInstance::get()->getLogicalDevice(), &descriptorSetAllocInfo, &node.descriptorSets[i]), "Could not create descriptor set for the node!");
-	
-		std::array<VkWriteDescriptorSet, 1> writeDescriptorSets{};
-
-		writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		writeDescriptorSets[0].descriptorCount = 1;
-		writeDescriptorSets[0].dstSet = node.descriptorSets[i];
-		writeDescriptorSets[0].dstBinding = 0;
-		VkDescriptorBufferInfo descriptor = node.uniformBuffers[i].getDescriptor();
-		writeDescriptorSets[0].pBufferInfo = &descriptor;
-
-		vkUpdateDescriptorSets(VulkanInstance::get()->getLogicalDevice(), static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
+		node.uniformBuffers[imageIndex].init(sizeof(Model::Node::NodeData));
+		Model::Node::NodeData data;
+		data.transform = node.matrix;
+		node.uniformBuffers[imageIndex].transfer(&data, sizeof(data), 0);
 	}
+
+	if (node.descriptorSets.empty())
+		node.descriptorSets.resize(this->swapChain->getNumImages(), VK_NULL_HANDLE);
+	VkDescriptorSetAllocateInfo descriptorSetAllocInfo{};
+	descriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	descriptorSetAllocInfo.descriptorPool = this->descriptorPools[imageIndex];
+	VkDescriptorSetLayout descriptorSetLayout = descriptorSetLayouts.node.getLayout();
+	descriptorSetAllocInfo.pSetLayouts = &descriptorSetLayout;
+	descriptorSetAllocInfo.descriptorSetCount = 1;
+	VULKAN_CHECK(vkAllocateDescriptorSets(VulkanInstance::get()->getLogicalDevice(), &descriptorSetAllocInfo, &node.descriptorSets[imageIndex]), "Could not create descriptor set for the node!");
+	
+	std::array<VkWriteDescriptorSet, 1> writeDescriptorSets{};
+
+	writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	writeDescriptorSets[0].descriptorCount = 1;
+	writeDescriptorSets[0].dstSet = node.descriptorSets[imageIndex];
+	writeDescriptorSets[0].dstBinding = 0;
+	VkDescriptorBufferInfo descriptor = node.uniformBuffers[imageIndex].getDescriptor();
+	writeDescriptorSets[0].pBufferInfo = &descriptor;
+
+	vkUpdateDescriptorSets(VulkanInstance::get()->getLogicalDevice(), static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
+	
 	for (Model::Node& child : node.children)
-		createNodeDescriptorsSets(child);
+		createNodeDescriptorsSets(imageIndex, child);
 }
 
 uint64_t ym::ModelRenderer::getUniqueId(uint32_t modelId, uint32_t instanceCount)
@@ -446,20 +463,23 @@ uint64_t ym::ModelRenderer::getUniqueId(uint32_t modelId, uint32_t instanceCount
 	return id;
 }
 
-void ym::ModelRenderer::addModelToBatch(DrawData& drawData)
+void ym::ModelRenderer::addModelToBatch(uint32_t imageIndex, DrawData& drawData)
 {
+	if (this->drawBatch.empty())
+		this->drawBatch.resize(this->swapChain->getNumImages());
+
 	uint32_t instanceCount = (uint32_t)drawData.transforms.size();
 	uint64_t id = getUniqueId(drawData.model->uniqueId, instanceCount);
-	auto& it = this->drawBatch.find(id);
-	if (it == this->drawBatch.end())
+	auto& it = this->drawBatch[imageIndex].find(id);
+	if (it == this->drawBatch[imageIndex].end())
 	{
 		// Create buffer for transformations.
 		drawData.transformsBuffer.init(sizeof(glm::mat4) * (uint64_t)instanceCount);
-		this->drawBatch[id] = drawData;
-		this->drawBatch[id].descriptorSet = VK_NULL_HANDLE;
+		this->drawBatch[imageIndex][id] = drawData;
+		this->drawBatch[imageIndex][id].descriptorSet = VK_NULL_HANDLE;
 
 		// Tell renderer to recreate descriptors before rendering.
-		this->shouldRecreateDescriptors = true;
+		this->shouldRecreateDescriptors[imageIndex] = true;
 	}
 	else
 	{

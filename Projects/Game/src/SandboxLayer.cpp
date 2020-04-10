@@ -7,8 +7,9 @@
 
 void SandboxLayer::onStart(ym::Renderer* renderer)
 {
-	//ym::GLTFLoader::load(YM_ASSETS_FILE_PATH + "Models/Tree/Tree.glb", &this->model);
-	ym::GLTFLoader::load(YM_ASSETS_FILE_PATH + "Models/Sponza/glTF/Sponza.gltf", &this->model);
+	ym::GLTFLoader::load(YM_ASSETS_FILE_PATH + "Models/Tree/Tree.glb", &this->model);
+	ym::GLTFLoader::load(YM_ASSETS_FILE_PATH + "Models/Cube/Cube.gltf", &this->cubeModel);
+	//ym::GLTFLoader::load(YM_ASSETS_FILE_PATH + "Models/Sponza/glTF/Sponza.gltf", &this->model);
 
 	float aspect = ym::Display::get()->getAspectRatio();
 	this->camera.init(aspect, 45.f, { 0.f, 0, 0.f }, { 0.f, 0, 1.f }, 10.0f, 10.0f);
@@ -53,6 +54,19 @@ void SandboxLayer::onRender(ym::Renderer* renderer)
 		transforms.push_back(transform);
 	}
 	renderer->drawModel(&this->model, transforms);
+
+	static bool spawn = false;
+	ym::Input* input = ym::Input::get();
+	ym::KeyState keyState = input->getKeyState(ym::Key::F);
+	if (keyState == ym::KeyState::FIRST_RELEASED)
+		spawn ^= 1;
+	if (spawn)
+	{
+		auto transform = glm::mat4(1.0f);
+		transform = glm::translate(transform, { 0.0f, 0.f, -10.f });
+		renderer->drawModel(&this->cubeModel, transform);
+	}
+
 	renderer->end();
 }
 
@@ -64,5 +78,6 @@ void SandboxLayer::onQuit()
 {
 	ym::Input::get()->unlockMouse();
 	this->model.destroy();
+	this->cubeModel.destroy();
 	this->camera.destroy();
 }
