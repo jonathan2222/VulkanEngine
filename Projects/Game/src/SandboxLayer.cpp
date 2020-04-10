@@ -10,7 +10,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Tree/Tree.glb", &this->model);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Cube/Cube.gltf", &this->cubeModel);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/WaterBottle/WaterBottle.glb", &this->waterBottleModel);
-	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Sponza/glTF/Sponza.gltf", &this->sponzaModel);
+	//ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Sponza/glTF/Sponza.gltf", &this->sponzaModel);
 
 	float aspect = ym::Display::get()->getAspectRatio();
 	this->camera.init(aspect, 45.f, { 0.f, 0, 0.f }, { 0.f, 0, 1.f }, 1.0f, 10.0f);
@@ -55,7 +55,7 @@ void SandboxLayer::onRender(ym::Renderer* renderer)
 	for (int32_t i = 0; i < max; i++)
 	{
 		auto transform = glm::mat4(1.0f);
-		transform = glm::translate(transform, { dist*(i - max/2), 0.f, 10.f});
+		transform = glm::translate(glm::mat4(1.0f), { dist*(i - max/2), 0.f, 10.f}) * transform;
 		transforms.push_back(transform);
 	}
 	renderer->drawModel(&this->model, transforms);
@@ -69,16 +69,16 @@ void SandboxLayer::onRender(ym::Renderer* renderer)
 	{
 		auto transform = glm::mat4(10.0f);
 		transform[3][3] = 1.0f;
-		transform = glm::translate(transform, { 0.0f, 0.f, -10.f });
+		transform = glm::translate(glm::mat4(1.0f), { 0.0f, 1.f, 0.f }) * transform;
 		renderer->drawModel(&this->waterBottleModel, transform);
 	}
 
 	glm::mat4 transform(100.0f);
 	transform[3][3] = 1.0f;
-	transform = glm::translate(transform, { 0.0f, -1.f, 0.f });
+	transform = glm::translate(glm::mat4(1.0f), { 0.0f, -100.f, 0.f }) * transform;
 	renderer->drawModel(&this->cubeModel, transform);
 
-	renderer->drawModel(&this->sponzaModel);
+	//renderer->drawModel(&this->sponzaModel);
 
 	renderer->end();
 }
@@ -93,6 +93,6 @@ void SandboxLayer::onQuit()
 	this->model.destroy();
 	this->cubeModel.destroy();
 	this->waterBottleModel.destroy();
-	this->sponzaModel.destroy();
+	//this->sponzaModel.destroy();
 	this->camera.destroy();
 }
