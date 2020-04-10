@@ -61,7 +61,6 @@ void ym::ModelRenderer::destroy()
 	for(VkDescriptorPool pool : this->descriptorPools)
 		vkDestroyDescriptorPool(VulkanInstance::get()->getLogicalDevice(), pool, nullptr);
 
-	;
 	vkDestroyDescriptorSetLayout(VulkanInstance::get()->getLogicalDevice(), this->descriptorSetLayouts.scene.getLayout(), nullptr);
 	vkDestroyDescriptorSetLayout(VulkanInstance::get()->getLogicalDevice(), this->descriptorSetLayouts.model.getLayout(), nullptr);
 	vkDestroyDescriptorSetLayout(VulkanInstance::get()->getLogicalDevice(), this->descriptorSetLayouts.node.getLayout(), nullptr);
@@ -83,6 +82,12 @@ void ym::ModelRenderer::setCamera(Camera* camera)
 void ym::ModelRenderer::begin(uint32_t imageIndex, VkCommandBufferInheritanceInfo inheritanceInfo)
 {
 	this->inheritanceInfo = inheritanceInfo;
+
+	if (this->drawBatch.empty() == false)
+	{
+		for (auto& drawData : this->drawBatch[imageIndex])
+			drawData.second.exists = false;
+	}
 
 	// Clear draw data if descriptor pool should be recreated.
 	if (this->shouldRecreateDescriptors[imageIndex])
@@ -143,11 +148,14 @@ void ym::ModelRenderer::end(uint32_t imageIndex)
 	currentBuffer->begin(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, &inheritanceInfo);
 	for (auto& drawData : this->drawBatch[imageIndex])
 	{
-		uint32_t instanceCount = (uint32_t)drawData.second.transforms.size();
-		drawData.second.transformsBuffer.transfer(drawData.second.transforms.data(), sizeof(glm::mat4)*instanceCount, 0);
-		ThreadManager::addWork(this->threadID, [=]() { 
-			recordModel(drawData.second.model, imageIndex, drawData.second.descriptorSet, instanceCount, currentBuffer, inheritanceInfo);
-		});
+		if (drawData.second.exists)
+		{
+			uint32_t instanceCount = (uint32_t)drawData.second.transforms.size();
+			drawData.second.transformsBuffer.transfer(drawData.second.transforms.data(), sizeof(glm::mat4) * instanceCount, 0);
+			ThreadManager::addWork(this->threadID, [=]() {
+				recordModel(drawData.second.model, imageIndex, drawData.second.descriptorSet, instanceCount, currentBuffer, inheritanceInfo);
+				});
+		}
 	}
 
 	ThreadManager::wait(this->threadID);
@@ -477,12 +485,14 @@ void ym::ModelRenderer::addModelToBatch(uint32_t imageIndex, DrawData& drawData)
 		drawData.transformsBuffer.init(sizeof(glm::mat4) * (uint64_t)instanceCount);
 		this->drawBatch[imageIndex][id] = drawData;
 		this->drawBatch[imageIndex][id].descriptorSet = VK_NULL_HANDLE;
+		this->drawBatch[imageIndex][id].exists = true;
 
 		// Tell renderer to recreate descriptors before rendering.
 		this->shouldRecreateDescriptors[imageIndex] = true;
 	}
 	else
 	{
+		it->second.exists = true;
 		it->second.model = drawData.model;
 		memcpy(it->second.transforms.data(), drawData.transforms.data(), sizeof(drawData.transforms));
 	}

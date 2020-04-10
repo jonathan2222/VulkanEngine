@@ -53,6 +53,7 @@ namespace ym
 
 		struct DrawData
 		{
+			bool exists{false}; // This is false when a model was removed. Will ensure that we do not recreate the descriptor pool if removing models only when adding.
 			Model* model{ nullptr };
 
 			// Instance data
