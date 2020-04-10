@@ -333,6 +333,23 @@ void ym::ModelRenderer::createDescriptorsSets(std::map<uint64_t, DrawData>& draw
 			if (material.descriptorSets.empty())
 			{
 				// Create descriptor sets for each material.
+				std::vector<Material::Tex> textures = {
+						material.baseColorTexture,
+						material.metallicRoughnessTexture,
+						material.normalTexture,
+						material.occlusionTexture,
+						material.emissiveTexture
+				};
+
+				std::array<VkDescriptorImageInfo, 5> imageInfos;
+				for (size_t j = 0; j < textures.size(); j++) 
+				{
+					Material::Tex& tex = textures[j];
+					imageInfos[j].imageLayout = tex.texture->image.getLayout();
+					imageInfos[j].imageView = tex.texture->imageView.getImageView();
+					imageInfos[j].sampler = tex.sampler->getSampler();
+				}
+
 				material.descriptorSets.resize(this->swapChain->getNumImages());
 				for (uint32_t i = 0; i < this->swapChain->getNumImages(); i++)
 				{
@@ -343,16 +360,8 @@ void ym::ModelRenderer::createDescriptorsSets(std::map<uint64_t, DrawData>& draw
 					descriptorSetAllocInfo.pSetLayouts = &descriptorSetLayout;
 					descriptorSetAllocInfo.descriptorSetCount = 1;
 					VULKAN_CHECK(vkAllocateDescriptorSets(device, &descriptorSetAllocInfo, &material.descriptorSets[i]), "Could not create descriptor set for material!");
-				
-					std::vector<Material::Tex> textures = {
-						material.baseColorTexture,
-						material.metallicRoughnessTexture,
-						material.normalTexture,
-						material.occlusionTexture,
-						material.emissiveTexture
-					};
 
-					std::array<VkWriteDescriptorSet, 5> writeDescriptorSets{};
+					/*std::array<VkWriteDescriptorSet, 5> writeDescriptorSets{};
 					for (size_t j = 0; j < textures.size(); j++) {
 
 						Material::Tex& tex = textures[j];
@@ -369,8 +378,18 @@ void ym::ModelRenderer::createDescriptorsSets(std::map<uint64_t, DrawData>& draw
 						writeDescriptorSets[j].dstBinding = static_cast<uint32_t>(j);
 						writeDescriptorSets[j].pImageInfo = &imageInfo;
 					}
-
 					vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
+					*/
+
+					VkWriteDescriptorSet writeDescriptorSet = {};
+					writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+					writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+					writeDescriptorSet.descriptorCount = static_cast<uint32_t>(imageInfos.size());
+					writeDescriptorSet.dstSet = material.descriptorSets[i];
+					writeDescriptorSet.dstBinding = 0;
+					writeDescriptorSet.pImageInfo = imageInfos.data();
+
+					vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, NULL);
 				}
 			}
 		}

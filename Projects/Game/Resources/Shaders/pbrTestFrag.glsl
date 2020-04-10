@@ -145,8 +145,10 @@ float microfacetDistribution(PBRInfo pbrInputs)
 }
 */
 void main() {
+	vec3 lightDir = normalize(vec3(0.5, 2.0, 0.5));
     vec3 baseColor = texture(baseColorTexture, fragUv).rgb;
-    outColor = vec4(baseColor, 1.0);
+	float diffuse = max(dot(lightDir, normalize(fragNormal)), 0.0);
+    outColor = vec4(baseColor*diffuse, 1.0);
 
 	/*
     vec3 lightDir = normalize(vec3(0.5, 2.0, 0.5)); // Vector from surface point to light

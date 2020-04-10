@@ -53,7 +53,7 @@ namespace ym
 		uint32_t indexCount{ 0 };
 		uint32_t vertexCount{ 0 };
 		bool hasIndices{ false };
-		Material* material;
+		Material* material{ nullptr };
 	};
 
 	class Mesh
@@ -81,7 +81,7 @@ namespace ym
 			glm::mat4 matrix; // Combination of rotation, translation and scale.
 			std::vector<Node> children;
 			Node* parent{ nullptr };
-			Model* model;
+			Model* model{ nullptr };
 			std::vector<VkDescriptorSet> descriptorSets; // Only holds matrix right now.
 			std::vector<UniformBuffer> uniformBuffers;	 // For the matrix.
 		};
