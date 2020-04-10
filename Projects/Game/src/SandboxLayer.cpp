@@ -42,9 +42,15 @@ void SandboxLayer::onUpdate(float dt)
 void SandboxLayer::onRender(ym::Renderer* renderer)
 {
 	renderer->begin();
-	auto transform = glm::mat4(1.0f);
-	transform = glm::translate(transform, {0.f, 0.f, 10.f});
-	renderer->drawModel(&this->model, transform);
+	std::vector<glm::mat4> transforms;
+	const int32_t max = 10;
+	for (int32_t i = 0; i < max; i++)
+	{
+		auto transform = glm::mat4(1.0f);
+		transform = glm::translate(transform, {i - max/2, 0.f, 10.f});
+		transforms.push_back(transform);
+	}
+	renderer->drawModel(&this->model, transforms);
 	renderer->end();
 }
 

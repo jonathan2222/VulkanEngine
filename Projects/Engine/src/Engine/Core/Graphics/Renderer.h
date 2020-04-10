@@ -31,6 +31,11 @@ namespace ym
 		void drawModel(Model* model, const glm::mat4& transform);
 
 		/*
+			Draw instanced model.
+		*/
+		void drawModel(Model* model, const std::vector<glm::mat4>& transforms);
+
+		/*
 			End frame. Will return true if succeeded, false if the swap chain needs to be recreated.
 		*/
 		bool end();

@@ -99,6 +99,11 @@ void ym::Renderer::drawModel(Model* model, const glm::mat4& transform)
 	this->modelRenderer.drawModel(model, transform);
 }
 
+void ym::Renderer::drawModel(Model* model, const std::vector<glm::mat4>& transforms)
+{
+	this->modelRenderer.drawModel(model, transforms);
+}
+
 bool ym::Renderer::end()
 {
 	this->modelRenderer.end(this->imageIndex);

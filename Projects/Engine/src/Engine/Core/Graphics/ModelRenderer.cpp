@@ -128,7 +128,7 @@ void ym::ModelRenderer::end(uint32_t imageIndex)
 		uint32_t instanceCount = (uint32_t)drawData.second.transforms.size();
 		drawData.second.transformsBuffer.transfer(drawData.second.transforms.data(), sizeof(glm::mat4)*instanceCount, 0);
 		ThreadManager::addWork(this->threadID, [=]() { 
-			recordModel(drawData.second.model, imageIndex, drawData.second.descriptorSet, currentBuffer, inheritanceInfo);
+			recordModel(drawData.second.model, imageIndex, drawData.second.descriptorSet, instanceCount, currentBuffer, inheritanceInfo);
 		});
 	}
 
@@ -141,7 +141,7 @@ std::vector<ym::CommandBuffer*>& ym::ModelRenderer::getBuffers()
 	return this->commandBuffers;
 }
 
-void ym::ModelRenderer::recordModel(Model* model, uint32_t imageIndex, VkDescriptorSet instanceDescriptorSet, CommandBuffer* cmdBuffer, VkCommandBufferInheritanceInfo inheritanceInfo)
+void ym::ModelRenderer::recordModel(Model* model, uint32_t imageIndex, VkDescriptorSet instanceDescriptorSet, uint32_t instanceCount, CommandBuffer* cmdBuffer, VkCommandBufferInheritanceInfo inheritanceInfo)
 {
 	if (model->vertexBuffer.getBuffer() == VK_NULL_HANDLE)
 		return;
@@ -155,7 +155,7 @@ void ym::ModelRenderer::recordModel(Model* model, uint32_t imageIndex, VkDescrip
 		cmdBuffer->cmdBindIndexBuffer(model->indexBuffer.getBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 	for (Model::Node& node : model->nodes)
-		drawNode(imageIndex, instanceDescriptorSet, cmdBuffer, &this->pipeline, node, 1);
+		drawNode(imageIndex, instanceDescriptorSet, cmdBuffer, &this->pipeline, node, instanceCount);
 }
 
 void ym::ModelRenderer::drawNode(uint32_t imageIndex, VkDescriptorSet instanceDescriptorSet, CommandBuffer* commandBuffer, Pipeline* pipeline, Model::Node& node, uint32_t instanceCount)
@@ -361,6 +361,7 @@ void ym::ModelRenderer::createDescriptorsSets(std::map<uint64_t, DrawData>& draw
 						imageInfo.imageView = tex.texture->imageView.getImageView();
 						imageInfo.sampler = tex.sampler->getSampler();
 
+						writeDescriptorSets[j] = {};
 						writeDescriptorSets[j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 						writeDescriptorSets[j].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 						writeDescriptorSets[j].descriptorCount = 1;
