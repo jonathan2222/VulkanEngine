@@ -9,6 +9,10 @@
 #include "Engine/Core/Vulkan/Texture.h"
 #include "Model/Model.h"
 
+#include <queue>
+#include <mutex>
+#include <set>
+
 namespace ym
 {
 	class CommandPool;
@@ -42,14 +46,26 @@ namespace ym
 
 	public:
 		/*
-			Creates default data such as a default texture and sampler, when it is missing.
+			Initialize default data.
 		*/
-		static void initDefaultData(CommandPool* transferCommandPool);
+		static void init();
 
 		/*
-			Destroy the default data.
+			Destroy default data.
 		*/
-		static void destroyDefaultData();
+		static void destroy();
+
+		/*
+			[This is only needed if loadOnThread is used]
+			Transfer data to GPU if it has finished loading on the thread.
+		*/
+		static void update();
+
+		/*
+			[Only works if update is called each frame]
+			Load a model from a thread to the GPU. This will perform staging.
+		*/
+		static void loadOnThread(const std::string& filePath, Model* model);
 
 		/*
 			Load a model to the GPU. This will perform staging.
@@ -67,6 +83,16 @@ namespace ym
 		static void transferToGPU(CommandPool* transferCommandPool, Model* model, StagingBuffers* stagingBuffers);
 
 	private:
+		/*
+			Creates default data such as a default texture and sampler, when it is missing.
+		*/
+		static void initDefaultData(CommandPool* transferCommandPool);
+
+		/*
+			Destroy the default data.
+		*/
+		static void destroyDefaultData();
+
 		static void loadTextures(std::string& folderPath, Model& model, tinygltf::Model& gltfModel, StagingBuffers* stagingBuffers);
 		static void loadImageData(std::string& folderPath, tinygltf::Image& image, tinygltf::Model& gltfModel, std::vector<uint8_t>& data);
 		static void loadSamplerData(tinygltf::Sampler& samplerGltf, Sampler& sampler);
@@ -86,5 +112,15 @@ namespace ym
 			Sampler sampler;
 		};
 		static DefaultData defaultData;
+		static CommandPool* commandPool;
+
+		struct ThreadData
+		{
+			Model* model{ nullptr };
+			StagingBuffers* stagingBuffers{ nullptr };
+		};
+		static std::queue<ThreadData> modelQueue;
+		static std::set<Model*> modelSet;
+		static std::mutex mutex;
 	};
 }

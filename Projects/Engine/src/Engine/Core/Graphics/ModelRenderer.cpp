@@ -44,6 +44,11 @@ void ym::ModelRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass
 	pipelineInfo.vertexInputInfo.pVertexBindingDescriptions = &vertexBindingDescriptions;
 	pipelineInfo.vertexInputInfo.pVertexAttributeDescriptions = vertexAttributeDescriptions.data();
 
+	VkPushConstantRange pushConstRange = {};
+	pushConstRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	pushConstRange.size = sizeof(Material::PushData);
+	pushConstRange.offset = 0;
+	this->pipeline.setPushConstant(pushConstRange);
 	this->pipeline.setPipelineInfo(PipelineInfoFlag::VERTEX_INPUT, pipelineInfo);
 	this->pipeline.setDescriptorLayouts(descriptorLayouts);
 	this->pipeline.setGraphicsPipelineInfo(this->swapChain->getExtent(), renderPass);
@@ -142,24 +147,29 @@ void ym::ModelRenderer::end(uint32_t imageIndex)
 
 		this->shouldRecreateDescriptors[imageIndex] = false;
 	}
-
+	
+	
 	// Start recording all draw commands on the thread.
 	CommandBuffer* currentBuffer = commandBuffers[imageIndex];
 	currentBuffer->begin(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, &inheritanceInfo);
-	for (auto& drawData : this->drawBatch[imageIndex])
+	if (this->drawBatch.empty() == false)
 	{
-		if (drawData.second.exists)
+		for (auto& drawData : this->drawBatch[imageIndex])
 		{
-			uint32_t instanceCount = (uint32_t)drawData.second.transforms.size();
-			drawData.second.transformsBuffer.transfer(drawData.second.transforms.data(), sizeof(glm::mat4) * instanceCount, 0);
-			ThreadManager::addWork(this->threadID, [=]() {
-				recordModel(drawData.second.model, imageIndex, drawData.second.descriptorSet, instanceCount, currentBuffer, inheritanceInfo);
-				});
+			if (drawData.second.exists)
+			{
+				uint32_t instanceCount = (uint32_t)drawData.second.transforms.size();
+				drawData.second.transformsBuffer.transfer(drawData.second.transforms.data(), sizeof(glm::mat4) * instanceCount, 0);
+				ThreadManager::addWork(this->threadID, [=]() {
+					recordModel(drawData.second.model, imageIndex, drawData.second.descriptorSet, instanceCount, currentBuffer, inheritanceInfo);
+					});
+			}
 		}
-	}
 
-	ThreadManager::wait(this->threadID);
+		ThreadManager::wait(this->threadID);
+	};
 	currentBuffer->end();
+	
 }
 
 std::vector<ym::CommandBuffer*>& ym::ModelRenderer::getBuffers()
@@ -188,16 +198,11 @@ void ym::ModelRenderer::drawNode(uint32_t imageIndex, VkDescriptorSet instanceDe
 {
 	if (node.hasMesh)
 	{
-		// Set transformation matrix
-		//PushConstantData pushConstantData;
-		//pushConstantData.matrix = node.parent != nullptr ? (transform * node.parent->matrix * node.matrix) : (transform * node.matrix);
-		//commandBuffer->cmdPushConstants(pipeline, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstantData), &pushConstantData);
-
 		Mesh& mesh = node.mesh;
 		for (Primitive& primitive : mesh.primitives)
 		{
-			//Material::PushData& pushData = primitive.material->pushData;
-			//commandBuffer->cmdPushConstants(pipeline, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(PushConstantData), sizeof(Material::PushData), &pushData);
+			Material::PushData& pushData = primitive.material->pushData;
+			commandBuffer->cmdPushConstants(pipeline, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Material::PushData), &pushData);
 
 			std::vector<VkDescriptorSet> sets = { 
 				this->descriptorSets[imageIndex].scene, 
@@ -473,27 +478,31 @@ uint64_t ym::ModelRenderer::getUniqueId(uint32_t modelId, uint32_t instanceCount
 
 void ym::ModelRenderer::addModelToBatch(uint32_t imageIndex, DrawData& drawData)
 {
-	if (this->drawBatch.empty())
-		this->drawBatch.resize(this->swapChain->getNumImages());
-
-	uint32_t instanceCount = (uint32_t)drawData.transforms.size();
-	uint64_t id = getUniqueId(drawData.model->uniqueId, instanceCount);
-	auto& it = this->drawBatch[imageIndex].find(id);
-	if (it == this->drawBatch[imageIndex].end())
+	// Only draw model if it is ready.
+	if (drawData.model->hasLoaded)
 	{
-		// Create buffer for transformations.
-		drawData.transformsBuffer.init(sizeof(glm::mat4) * (uint64_t)instanceCount);
-		this->drawBatch[imageIndex][id] = drawData;
-		this->drawBatch[imageIndex][id].descriptorSet = VK_NULL_HANDLE;
-		this->drawBatch[imageIndex][id].exists = true;
+		if (this->drawBatch.empty())
+			this->drawBatch.resize(this->swapChain->getNumImages());
 
-		// Tell renderer to recreate descriptors before rendering.
-		this->shouldRecreateDescriptors[imageIndex] = true;
-	}
-	else
-	{
-		it->second.exists = true;
-		it->second.model = drawData.model;
-		memcpy(it->second.transforms.data(), drawData.transforms.data(), sizeof(drawData.transforms));
+		uint32_t instanceCount = (uint32_t)drawData.transforms.size();
+		uint64_t id = getUniqueId(drawData.model->uniqueId, instanceCount);
+		auto& it = this->drawBatch[imageIndex].find(id);
+		if (it == this->drawBatch[imageIndex].end())
+		{
+			// Create buffer for transformations.
+			drawData.transformsBuffer.init(sizeof(glm::mat4) * (uint64_t)instanceCount);
+			this->drawBatch[imageIndex][id] = drawData;
+			this->drawBatch[imageIndex][id].descriptorSet = VK_NULL_HANDLE;
+			this->drawBatch[imageIndex][id].exists = true;
+
+			// Tell renderer to recreate descriptors before rendering.
+			this->shouldRecreateDescriptors[imageIndex] = true;
+		}
+		else
+		{
+			it->second.exists = true;
+			it->second.model = drawData.model;
+			memcpy(it->second.transforms.data(), drawData.transforms.data(), sizeof(drawData.transforms));
+		}
 	}
 }

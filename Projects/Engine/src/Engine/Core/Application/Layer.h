@@ -21,6 +21,8 @@ namespace ym
 		virtual void onRenderImGui() = 0;
 		virtual void onQuit() = 0;
 
+		void terminate();
+
 		LayerManager* getManager();
 
 		friend class LayerManager;

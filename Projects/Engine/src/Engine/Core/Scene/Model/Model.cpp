@@ -38,6 +38,8 @@ namespace ym
 
 		for (Sampler& sampler : this->samplers)
 			sampler.destroy();
+
+		this->hasLoaded = false;
 	}
 
 	void Model::destroyNode(Node& node)

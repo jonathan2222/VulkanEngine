@@ -12,6 +12,12 @@ namespace ym
 	class Renderer
 	{
 	public:
+		enum ERendererType
+		{
+			RENDER_TYPE_MODEL = 0,
+			RENDER_TYPE_SIZE
+		};
+	public:
 		Renderer();
 		virtual ~Renderer();
 
@@ -27,6 +33,11 @@ namespace ym
 		bool begin();
 		
 		/*
+			Draw the specified model at the origin.
+		*/
+		void drawModel(Model* model);
+
+		/*
 			Draw the specified model.
 		*/
 		void drawModel(Model* model, const glm::mat4& transform);
@@ -40,13 +51,6 @@ namespace ym
 			End frame. Will return true if succeeded, false if the swap chain needs to be recreated.
 		*/
 		bool end();
-
-	private:
-		enum ERendererType
-		{
-			RENDER_TYPE_MODEL = 0,
-			RENDER_TYPE_SIZE
-		};
 
 	private:
 		void createDepthTexture();

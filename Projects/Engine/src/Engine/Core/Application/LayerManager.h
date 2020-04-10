@@ -36,6 +36,8 @@ namespace ym
 		// Quit all layers
 		void onQuit();
 
+		void terminate();
+
 		CommandPools* getCommandPools();
 
 	private:

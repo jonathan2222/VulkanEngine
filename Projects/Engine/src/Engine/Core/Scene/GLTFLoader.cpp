@@ -23,47 +23,89 @@
 #include "Engine/Core/Vulkan/Factory.h"
 #include "Engine/Core/Application/LayerManager.h"
 
+#include "Engine/Core/Threading/ThreadManager.h"
+#include "Engine/Core/Threading/ThreadIndices.h"
+
+#include "Engine/Core/Vulkan/CommandPool.h"
+
 namespace ym
 {
 	Model GLTFLoader::model = Model();
 	tinygltf::TinyGLTF GLTFLoader::loader = tinygltf::TinyGLTF();
 	GLTFLoader::DefaultData GLTFLoader::defaultData;
+	CommandPool* GLTFLoader::commandPool = nullptr;
 
-	void GLTFLoader::initDefaultData(CommandPool* transferCommandPool)
+	std::queue<GLTFLoader::ThreadData> GLTFLoader::modelQueue;
+	std::mutex GLTFLoader::mutex;
+	std::set<Model*> GLTFLoader::modelSet; // Used for debugging to check if trying to load to the same model from a thread.
+
+	void GLTFLoader::init()
 	{
-		// Default 1x1 white texture
-		uint8_t pixel[4] = { 0xFF, 0xFF, 0xFF, 0xFF };
-		TextureDesc textureDesc;
-		textureDesc.width = 1;
-		textureDesc.height = 1;
-		textureDesc.format = VK_FORMAT_R8G8B8A8_UNORM;
-		textureDesc.data = &pixel[0];
-		defaultData.texture = ym::Factory::createTexture(textureDesc, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
-		ym::Factory::transferData(defaultData.texture, transferCommandPool);
-
-		// Sampler
-		Sampler& sampler = defaultData.sampler;
-		sampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
-
-		// Set descriptor
-		ym::Factory::applyTextureDescriptor(defaultData.texture, &sampler);
+		commandPool = new CommandPool();
+		commandPool->init(CommandPool::Queue::GRAPHICS, 0);
+		initDefaultData(commandPool);
 	}
 
-	void GLTFLoader::destroyDefaultData()
+	void GLTFLoader::destroy()
 	{
-		defaultData.texture->destroy();
-		SAFE_DELETE(defaultData.texture);
-		defaultData.sampler.destroy();
+		destroyDefaultData();
+		commandPool->destroy();
+		SAFE_DELETE(commandPool);
+	}
+
+	void GLTFLoader::update()
+	{
+		CommandPool* graphicsPool = &LayerManager::get()->getCommandPools()->graphicsPool;
+		std::lock_guard<std::mutex> lck(mutex);
+		while (modelQueue.empty() == false)
+		{
+			ThreadData& data = modelQueue.front();
+			data.stagingBuffers->initMemory();
+			transferToGPU(graphicsPool, data.model, data.stagingBuffers);
+			data.stagingBuffers->destroy();
+			SAFE_DELETE(data.stagingBuffers);
+			modelQueue.pop();
+			modelSet.erase(data.model);
+		}
+	}
+
+	void GLTFLoader::loadOnThread(const std::string& filePath, Model* model)
+	{
+		if (modelSet.insert(model).second)
+		{
+			ThreadManager::addWork((uint32_t)ThreadIndices::GLTF_LOADER, [=]() {
+				ThreadData threadData;
+				threadData.model = model;
+				threadData.stagingBuffers = new StagingBuffers();
+				loadToRAM(filePath, model, threadData.stagingBuffers);
+
+				{
+					std::lock_guard<std::mutex> lck(mutex);
+					modelQueue.push(threadData);
+				}
+			});
+		}
+		else
+		{
+			YM_LOG_ERROR("Cannot load a model to an existing model pointer!");
+		}
 	}
 
 	void GLTFLoader::load(const std::string& filePath, Model* model)
 	{
-		CommandPool& graphicsPool = LayerManager::get()->getCommandPools()->graphicsPool;
-		StagingBuffers stagingBuffers;
-		loadToRAM(filePath, model, &stagingBuffers);
-		stagingBuffers.initMemory();
-		transferToGPU(&graphicsPool, model, &stagingBuffers);
-		stagingBuffers.destroy();
+		if (model->vertices.empty())
+		{
+			CommandPool* graphicsPool = &LayerManager::get()->getCommandPools()->graphicsPool;
+			StagingBuffers stagingBuffers;
+			loadToRAM(filePath, model, &stagingBuffers);
+			stagingBuffers.initMemory();
+			transferToGPU(graphicsPool, model, &stagingBuffers);
+			stagingBuffers.destroy();
+		}
+		else
+		{
+			YM_LOG_ERROR("Cannot load a model to an existing model pointer!");
+		}
 	}
 
 	void GLTFLoader::loadToRAM(const std::string & filePath, Model * model, StagingBuffers * stagingBuffers)
@@ -158,6 +200,35 @@ namespace ym
 		cbuff->cmdCopyBuffer(stagingBuffers->geometryBuffer.getBuffer(), model->vertexBuffer.getBuffer(), 1, &region);
 
 		transferCommandPool->endSingleTimeCommand(cbuff);
+
+		model->hasLoaded = true;
+	}
+
+	void GLTFLoader::initDefaultData(CommandPool* transferCommandPool)
+	{
+		// Default 1x1 white texture
+		uint8_t pixel[4] = { 0xFF, 0xFF, 0xFF, 0xFF };
+		TextureDesc textureDesc;
+		textureDesc.width = 1;
+		textureDesc.height = 1;
+		textureDesc.format = VK_FORMAT_R8G8B8A8_UNORM;
+		textureDesc.data = &pixel[0];
+		defaultData.texture = ym::Factory::createTexture(textureDesc, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
+		ym::Factory::transferData(defaultData.texture, transferCommandPool);
+
+		// Sampler
+		Sampler& sampler = defaultData.sampler;
+		sampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
+		// Set descriptor
+		ym::Factory::applyTextureDescriptor(defaultData.texture, &sampler);
+	}
+
+	void GLTFLoader::destroyDefaultData()
+	{
+		defaultData.texture->destroy();
+		SAFE_DELETE(defaultData.texture);
+		defaultData.sampler.destroy();
 	}
 
 	void GLTFLoader::loadTextures(std::string & folderPath, Model & model, tinygltf::Model & gltfModel, StagingBuffers * stagingBuffers)

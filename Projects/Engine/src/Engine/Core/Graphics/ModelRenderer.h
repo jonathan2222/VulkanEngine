@@ -25,8 +25,14 @@ namespace ym
 		void init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass);
 		void destroy();
 		
+		/*
+			Set the active camera which will be used when drawing.
+		*/
 		void setCamera(Camera* camera);
 
+		/*
+			Prepare to draw.
+		*/
 		void begin(uint32_t imageIndex, VkCommandBufferInheritanceInfo inheritanceInfo);
 
 		/*
@@ -39,6 +45,9 @@ namespace ym
 		*/
 		void drawModel(uint32_t imageIndex, Model* model, const std::vector<glm::mat4>& transforms);
 
+		/*
+			Gather and record draw commands.
+		*/
 		void end(uint32_t imageIndex);
 
 		std::vector<CommandBuffer*>& getBuffers();

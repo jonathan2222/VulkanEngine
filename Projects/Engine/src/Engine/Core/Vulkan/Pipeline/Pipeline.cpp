@@ -50,6 +50,11 @@ namespace ym
 		this->pushConstantRanges = pushConstants.getRanges();
 	}
 
+	void Pipeline::setPushConstant(VkPushConstantRange range)
+	{
+		this->pushConstantRanges.push_back(range);
+	}
+
 	void Pipeline::setWireframe(bool enable)
 	{
 		if (enable)

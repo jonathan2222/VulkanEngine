@@ -93,6 +93,7 @@ namespace ym
 		void destroy();
 
 		uint32_t uniqueId;
+		bool hasLoaded{ false };
 
 		// Layout
 		std::vector<Node> nodes;

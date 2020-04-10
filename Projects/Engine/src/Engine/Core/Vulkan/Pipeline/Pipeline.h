@@ -29,6 +29,8 @@ namespace ym
 		void setDescriptorLayouts(const std::vector<DescriptorLayout>& descriptorLayouts);
 		// Set push constants which will be used
 		void setPushConstants(const PushConstants& pushConstants);
+		// Set a single push constant.
+		void setPushConstant(VkPushConstantRange range);
 		// Enables or disables wireframe at creation time
 		void setWireframe(bool enable);
 		// Sets the necessary information for the graphics pipeline

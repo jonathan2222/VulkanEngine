@@ -17,5 +17,7 @@ public:
 private:
 	ym::Model model;
 	ym::Model cubeModel;
+	ym::Model waterBottleModel;
+	ym::Model sponzaModel;
 	ym::Camera camera;
 };

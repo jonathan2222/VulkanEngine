@@ -21,6 +21,8 @@ namespace ym
 
 		void run();
 
+		void terminate();
+
 		LayerManager* getLayerManager();
 
 		friend class LayerManager;
@@ -30,6 +32,7 @@ namespace ym
 		Renderer renderer;
 		CommandPools commandPools;
 		VulkanInstance* vulkanInstance;
+		bool shouldQuit{ false };
 	};
 
 	// The user should define this!

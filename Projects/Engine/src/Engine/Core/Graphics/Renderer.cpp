@@ -28,11 +28,10 @@ void ym::Renderer::init()
 	createFramebuffers(this->depthTexture->imageView.getImageView());
 
 	// Each renderer has a corresponding thread.
-	ThreadManager::init((uint32_t)ERendererType::RENDER_TYPE_SIZE);
 	this->modelRenderer.init(&this->swapChain, (uint32_t)ERendererType::RENDER_TYPE_MODEL, &this->renderPass); // Uses thread 0.
 
 	CommandPool& graphicsPool = LayerManager::get()->getCommandPools()->graphicsPool;
-	GLTFLoader::initDefaultData(&graphicsPool);
+	GLTFLoader::init();
 
 	createSyncObjects();
 
@@ -47,7 +46,7 @@ void ym::Renderer::preDestroy()
 
 void ym::Renderer::destroy()
 {
-	GLTFLoader::destroyDefaultData();
+	GLTFLoader::destroy();
 
 	this->modelRenderer.destroy();
 
@@ -66,6 +65,9 @@ void ym::Renderer::setCamera(Camera* camera)
 
 bool ym::Renderer::begin()
 {
+	// Check if models have loaded.
+	GLTFLoader::update();
+
 	vkWaitForFences(VulkanInstance::get()->getLogicalDevice(), 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
 	VkResult result = vkAcquireNextImageKHR(VulkanInstance::get()->getLogicalDevice(), this->swapChain.getSwapChain(), UINT64_MAX, this->imageAvailableSemaphores[this->currentFrame], VK_NULL_HANDLE, &this->imageIndex);
 
@@ -95,6 +97,12 @@ bool ym::Renderer::begin()
 	this->modelRenderer.begin(this->imageIndex, this->inheritanceInfo);
 
 	return true;
+}
+
+void ym::Renderer::drawModel(Model* model)
+{
+	glm::mat4 transform(1.0f);
+	this->modelRenderer.drawModel(this->imageIndex, model, transform);
 }
 
 void ym::Renderer::drawModel(Model* model, const glm::mat4& transform)
@@ -220,9 +228,6 @@ void ym::Renderer::destroySyncObjects()
 
 void ym::Renderer::submit()
 {
-	// Wait for model renderer to finish.
-	//ThreadManager::wait((uint32_t)ERendererType::RENDER_TYPE_MODEL); // Wait on ModelRenderer
-
 	// Gather all secondary buffers. (One in this case)
 	std::vector<CommandBuffer*>& secondaryBuffers = this->modelRenderer.getBuffers();
 	std::vector<VkCommandBuffer> vkCommands;

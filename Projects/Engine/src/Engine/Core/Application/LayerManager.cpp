@@ -70,6 +70,11 @@ void ym::LayerManager::onQuit()
 		layer->onQuit();
 }
 
+void ym::LayerManager::terminate()
+{
+	this->appPtr->terminate();
+}
+
 ym::CommandPools* ym::LayerManager::getCommandPools()
 {
 	return &this->appPtr->commandPools;

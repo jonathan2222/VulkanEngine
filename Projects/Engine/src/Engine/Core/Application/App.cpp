@@ -4,6 +4,7 @@
 #include "../Display/Display.h"
 #include "../Input/Input.h"
 #include "LayerManager.h"
+#include "../Threading/ThreadManager.h"
 
 #include "Utils/Timer.h"
 
@@ -43,10 +44,15 @@ ym::App::App()
 
 	// Initialize the vulkan renderer.
 	this->renderer.init();
+
+	// Allocate threads for each renderer and one for the GLTFLoader.
+	ThreadManager::init((uint32_t)Renderer::ERendererType::RENDER_TYPE_SIZE + 1);
 }
 
 ym::App::~App()
 {
+	ThreadManager::destroy();
+
 	this->renderer.destroy();
 	this->commandPools.destroy();
 	this->vulkanInstance->destroy();
@@ -75,7 +81,7 @@ void ym::App::run()
 	ym::Timer timer;
 	float dt = 0.16f;
 	float debugTimer = 1.0f;
-	while (!display->shouldClose())
+	while (!(display->shouldClose() || this->shouldQuit))
 	{
 		// Begin rendering profiling.
 #ifdef YM_DEBUG
@@ -140,6 +146,11 @@ void ym::App::run()
 	// Shutdown layers
 	this->renderer.preDestroy();
 	this->layerManager->onQuit();
+}
+
+void ym::App::terminate()
+{
+	this->shouldQuit = true;
 }
 
 ym::LayerManager* ym::App::getLayerManager()

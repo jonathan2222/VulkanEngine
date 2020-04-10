@@ -35,8 +35,9 @@ layout(location = 2) out vec3 fragPos;
 layout(location = 3) out vec3 camPos;
 
 void main() {
-    gl_Position = scene.proj * scene.view * modelTransform[gl_InstanceIndex] * node.transform * vec4(position.xyz, 1.0);
-    fragPos = gl_Position.xyz;
+    vec4 worldPosition = modelTransform[gl_InstanceIndex] * node.transform * vec4(position.xyz, 1.0);
+    fragPos = worldPosition.xyz;
+    gl_Position = scene.proj * scene.view * worldPosition;
     fragNormal = normalize((modelTransform[gl_InstanceIndex] * node.transform * vec4(normal.xyz, 0.0)).xyz);
     fragUv = texCoords.xy;
     camPos = scene.cPos.xyz;
