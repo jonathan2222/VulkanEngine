@@ -6,6 +6,7 @@
 #include "Engine/Core/Scene/GLTFLoader.h"
 #include "Engine/Core/Application/LayerManager.h"
 #include "Engine/Core/Threading/ThreadManager.h"
+#include "Engine/Core/Vulkan/Pipeline/DescriptorSet.h"
 
 ym::Renderer::Renderer()
 {
@@ -27,14 +28,16 @@ void ym::Renderer::init()
 	createRenderPass();
 	createFramebuffers(this->depthTexture->imageView.getImageView());
 
-	// Each renderer has a corresponding thread.
-	this->modelRenderer.init(&this->swapChain, (uint32_t)ERendererType::RENDER_TYPE_MODEL, &this->renderPass); // Uses thread 0.
+	setupSceneDescriptors();
 
-	CommandPool& graphicsPool = LayerManager::get()->getCommandPools()->graphicsPool;
+	// Each renderer has a corresponding thread.
+	this->modelRenderer.init(&this->swapChain, (uint32_t)ERendererType::RENDER_TYPE_MODEL, &this->renderPass, &this->sceneDescriptors); // Uses thread 0.
+
 	GLTFLoader::init();
 
 	createSyncObjects();
 
+	CommandPool& graphicsPool = LayerManager::get()->getCommandPools()->graphicsPool;
 	this->primaryCommandBuffers = graphicsPool.createCommandBuffers(this->swapChain.getNumImages(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 }
 
@@ -48,8 +51,16 @@ void ym::Renderer::destroy()
 {
 	GLTFLoader::destroy();
 
+	// Destroy sub-renderers.
 	this->modelRenderer.destroy();
 
+	// Destroy scene data.
+	for (UniformBuffer& ubo : this->sceneUBOs)
+		ubo.destroy();
+	this->sceneDescriptors.layout.destroy();
+	this->descriptorPool.destroy();
+
+	// Destroy the rest.
 	this->renderPass.destroy();
 	this->depthTexture->destroy();
 	SAFE_DELETE(this->depthTexture);
@@ -58,9 +69,9 @@ void ym::Renderer::destroy()
 	this->swapChain.destory();
 }
 
-void ym::Renderer::setCamera(Camera* camera)
+void ym::Renderer::setActiveCamera(Camera* camera)
 {
-	this->modelRenderer.setCamera(camera);
+	this->activeCamera = camera;
 }
 
 bool ym::Renderer::begin()
@@ -107,7 +118,6 @@ void ym::Renderer::drawModel(Model* model)
 
 void ym::Renderer::drawModel(Model* model, const glm::mat4& transform)
 {
-	// Add model for drawing.
 	this->modelRenderer.drawModel(this->imageIndex, model, transform);
 }
 
@@ -118,10 +128,20 @@ void ym::Renderer::drawModel(Model* model, const std::vector<glm::mat4>& transfo
 
 bool ym::Renderer::end()
 {
+	// Update camera.
+	SceneData sceneData;
+	sceneData.proj = this->activeCamera->getProjection();
+	sceneData.view = this->activeCamera->getView();
+	sceneData.cPos = this->activeCamera->getPosition();
+	this->sceneUBOs[imageIndex].transfer(&sceneData, sizeof(SceneData), 0);
+
+	// End renderers.
 	this->modelRenderer.end(this->imageIndex);
 
+	// Submit all work.
 	submit();
 
+	// Present new frame.
 	VkSemaphore waitSemaphores[] = { this->renderFinishedSemaphores[this->currentFrame] };
 	VkSwapchainKHR swapchain = this->swapChain.getSwapChain();
 
@@ -265,4 +285,30 @@ void ym::Renderer::submit()
 
 	vkResetFences(VulkanInstance::get()->getLogicalDevice(), 1, &this->inFlightFences[this->currentFrame]);
 	VULKAN_CHECK(vkQueueSubmit(VulkanInstance::get()->getGraphicsQueue().queue, 1, &submitInfo, this->inFlightFences[this->currentFrame]), "Failed to sumbit commandbuffer!");
+}
+
+void ym::Renderer::setupSceneDescriptors()
+{
+	this->sceneUBOs.resize(this->swapChain.getNumImages());
+	for (auto& ubo : this->sceneUBOs)
+		ubo.init(sizeof(SceneData));
+
+	this->sceneDescriptors.layout.add(new UBO(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)); // Camera
+	this->sceneDescriptors.layout.init();
+
+	// There is only one scene at a time => one descriptor set.
+	this->descriptorPool.addDescriptorLayout(this->sceneDescriptors.layout, 1);
+
+	// The scene will be used in all frames => make copies of them.
+	uint32_t numFrames = this->swapChain.getNumImages();
+	descriptorPool.init(numFrames);
+
+	this->sceneDescriptors.sets.resize(this->swapChain.getNumImages(), VK_NULL_HANDLE);
+	for (uint32_t i = 0; i < this->swapChain.getNumImages(); i++)
+	{
+		DescriptorSet sceneSet;
+		sceneSet.init(this->sceneDescriptors.layout, &this->sceneDescriptors.sets[i], &this->descriptorPool);
+		sceneSet.setBufferDesc(0, this->sceneUBOs[i].getDescriptor());
+		sceneSet.update();
+	}
 }

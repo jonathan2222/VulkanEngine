@@ -12,6 +12,7 @@
 #include "Engine/Core/Vulkan/Buffers/UniformBuffer.h"
 #include "Engine/Core/Vulkan/Buffers/StorageBuffer.h"
 #include "Engine/Core/Camera.h"
+#include "Engine/Core/Graphics/SceneData.h"
 
 namespace ym
 {
@@ -21,13 +22,8 @@ namespace ym
 		ModelRenderer();
 		virtual ~ModelRenderer();
 
-		void init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass);
+		void init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass, SceneDescriptors* sceneDescriptors);
 		void destroy();
-		
-		/*
-			Set the active camera which will be used when drawing.
-		*/
-		void setCamera(Camera* camera);
 
 		/*
 			Prepare to draw.
@@ -52,13 +48,6 @@ namespace ym
 		std::vector<CommandBuffer*>& getBuffers();
 
 	private:
-		struct SceneData
-		{
-			glm::mat4 proj;
-			glm::mat4 view;
-			alignas(16) glm::vec3 cPos;
-		};
-
 		struct DrawData
 		{
 			bool exists{false}; // This is false when a model was removed. Will ensure that we do not recreate the descriptor pool if removing models only when adding.
@@ -73,7 +62,6 @@ namespace ym
 		void recordModel(Model* model, uint32_t imageIndex, VkDescriptorSet instanceDescriptorSet, uint32_t instanceCount, CommandBuffer* cmdBuffer, VkCommandBufferInheritanceInfo inheritanceInfo);
 		void drawNode(uint32_t imageIndex, VkDescriptorSet instanceDescriptorSet, CommandBuffer* commandBuffer, Pipeline* pipeline, Model::Node& node, uint32_t instanceCount);
 		
-		void createBuffers();
 		void createDescriptorLayouts();
 		void recreateDescriptorPool(uint32_t imageIndex, uint32_t materialCount, uint32_t nodeCount, uint32_t modelCount);
 		void createDescriptorsSets(uint32_t imageIndex, std::map<uint64_t, DrawData>& drawBatch);
@@ -89,25 +77,15 @@ namespace ym
 		std::vector<std::map<uint64_t, DrawData>> drawBatch;
 		VkCommandBufferInheritanceInfo inheritanceInfo;
 
-		Camera* activeCamera{nullptr};
-
-		// Uniforms
-		std::vector<UniformBuffer> sceneUBOs;
-
 		// Descriptors
 		std::vector<DescriptorPool> descriptorPools;
 		struct DescriptorSetLayouts
 		{
-			DescriptorLayout scene;		// Holds camera data and other global data for the scene.
 			DescriptorLayout model;		// Holds instance transformations.
 			DescriptorLayout node;		// Holds local node transformations. (This will be the same for every instance of the same model)
 			DescriptorLayout material;	// Holds data of a specific material.
 		} descriptorSetLayouts;
-		struct DescriptorSetData
-		{
-			VkDescriptorSet scene = VK_NULL_HANDLE;
-		};
-		std::vector<DescriptorSetData> descriptorSets;
+		SceneDescriptors* sceneDescriptors;
 
 		// Thread data
 		std::vector<CommandBuffer*> commandBuffers;

@@ -14,7 +14,7 @@ ym::ModelRenderer::~ModelRenderer()
 {
 }
 
-void ym::ModelRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass)
+void ym::ModelRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass, SceneDescriptors* sceneDescriptors)
 {
 	this->swapChain = swapChain;
 	this->threadID = threadID;
@@ -27,10 +27,10 @@ void ym::ModelRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass
 
 	this->shouldRecreateDescriptors.resize(this->swapChain->getNumImages(), false);
 	this->descriptorPools.resize(this->swapChain->getNumImages());
-	this->descriptorSets.resize(this->swapChain->getNumImages());
+	this->sceneDescriptors = sceneDescriptors;
 
 	createDescriptorLayouts();
-	std::vector<DescriptorLayout> descriptorLayouts = { descriptorSetLayouts.scene, descriptorSetLayouts.node, descriptorSetLayouts.material, descriptorSetLayouts.model };
+	std::vector<DescriptorLayout> descriptorLayouts = { this->sceneDescriptors->layout, descriptorSetLayouts.node, descriptorSetLayouts.material, descriptorSetLayouts.model };
 	VkVertexInputBindingDescription vertexBindingDescriptions = Vertex::getBindingDescriptions();
 	std::array<VkVertexInputAttributeDescription, 3> vertexAttributeDescriptions = Vertex::getAttributeDescriptions();
 	PipelineInfo pipelineInfo = {};
@@ -50,8 +50,6 @@ void ym::ModelRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass
 	this->pipeline.setGraphicsPipelineInfo(this->swapChain->getExtent(), renderPass);
 	this->pipeline.setWireframe(false);
 	this->pipeline.init(Pipeline::Type::GRAPHICS, &this->shader);
-
-	createBuffers();
 }
 
 void ym::ModelRenderer::destroy()
@@ -62,22 +60,13 @@ void ym::ModelRenderer::destroy()
 	for (DescriptorPool& pool : this->descriptorPools)
 		pool.destroy();
 
-	vkDestroyDescriptorSetLayout(VulkanInstance::get()->getLogicalDevice(), this->descriptorSetLayouts.scene.getLayout(), nullptr);
-	vkDestroyDescriptorSetLayout(VulkanInstance::get()->getLogicalDevice(), this->descriptorSetLayouts.model.getLayout(), nullptr);
-	vkDestroyDescriptorSetLayout(VulkanInstance::get()->getLogicalDevice(), this->descriptorSetLayouts.node.getLayout(), nullptr);
-	vkDestroyDescriptorSetLayout(VulkanInstance::get()->getLogicalDevice(), this->descriptorSetLayouts.material.getLayout(), nullptr);
+	this->descriptorSetLayouts.model.destroy();
+	this->descriptorSetLayouts.node.destroy();
+	this->descriptorSetLayouts.material.destroy();
 
 	for (auto& batch : this->drawBatch)
 		for (auto& drawData : batch)
 			drawData.second.transformsBuffer.destroy();
-
-	for (UniformBuffer& ubo : this->sceneUBOs)
-		ubo.destroy();
-}
-
-void ym::ModelRenderer::setCamera(Camera* camera)
-{
-	this->activeCamera = camera;
 }
 
 void ym::ModelRenderer::begin(uint32_t imageIndex, VkCommandBufferInheritanceInfo inheritanceInfo)
@@ -117,13 +106,6 @@ void ym::ModelRenderer::drawModel(uint32_t imageIndex, Model* model, const std::
 
 void ym::ModelRenderer::end(uint32_t imageIndex)
 {
-	// Update camera.
-	SceneData sceneData;
-	sceneData.proj = this->activeCamera->getProjection();
-	sceneData.view = this->activeCamera->getView();
-	sceneData.cPos = this->activeCamera->getPosition();
-	this->sceneUBOs[imageIndex].transfer(&sceneData, sizeof(SceneData), 0);
-
 	if (this->shouldRecreateDescriptors[imageIndex])
 	{
 		// Fetch number of nodes and materials.
@@ -201,7 +183,7 @@ void ym::ModelRenderer::drawNode(uint32_t imageIndex, VkDescriptorSet instanceDe
 			commandBuffer->cmdPushConstants(pipeline, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Material::PushData), &pushData);
 
 			std::vector<VkDescriptorSet> sets = { 
-				this->descriptorSets[imageIndex].scene, 
+				this->sceneDescriptors->sets[imageIndex],
 				node.descriptorSets[imageIndex], 
 				primitive.material->descriptorSets[imageIndex],
 				instanceDescriptorSet
@@ -221,20 +203,8 @@ void ym::ModelRenderer::drawNode(uint32_t imageIndex, VkDescriptorSet instanceDe
 		drawNode(imageIndex, instanceDescriptorSet, commandBuffer, pipeline, child, instanceCount);
 }
 
-void ym::ModelRenderer::createBuffers()
-{
-	// Scene buffer
-	this->sceneUBOs.resize(this->swapChain->getNumImages());
-	for(auto& ubo : this->sceneUBOs)
-		ubo.init(sizeof(SceneData));
-}
-
 void ym::ModelRenderer::createDescriptorLayouts()
 {
-	// Scene
-	descriptorSetLayouts.scene.add(new UBO(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)); // Camera
-	descriptorSetLayouts.scene.init();
-
 	// Model
 	descriptorSetLayouts.model.add(new SSBO(VK_SHADER_STAGE_VERTEX_BIT)); // Instance transformations.
 	descriptorSetLayouts.model.init();
@@ -259,8 +229,6 @@ void ym::ModelRenderer::recreateDescriptorPool(uint32_t imageIndex, uint32_t mat
 	if (descriptorPool.wasCreated())
 		descriptorPool.destroy();
 
-	// There is only one scene at a time => one descriptor set.
-	descriptorPool.addDescriptorLayout(descriptorSetLayouts.scene, 1);
 	// There are many models with its own data => own descriptor set, multiply with the number of models.
 	descriptorPool.addDescriptorLayout(descriptorSetLayouts.model, modelCount);
 	// There are many nodes with its own data => own descriptor set, multiply with the number of nodes.
@@ -268,21 +236,12 @@ void ym::ModelRenderer::recreateDescriptorPool(uint32_t imageIndex, uint32_t mat
 	// Same for the material but multiply instead with the number of materials.
 	descriptorPool.addDescriptorLayout(descriptorSetLayouts.material, materialCount);
 
-	uint32_t numFrames = this->swapChain->getNumImages();
-	descriptorPool.init(numFrames);
+	descriptorPool.init(1);
 }
 
 void ym::ModelRenderer::createDescriptorsSets(uint32_t imageIndex, std::map<uint64_t, DrawData>& drawBatch)
 {
 	VkDevice device = VulkanInstance::get()->getLogicalDevice();
-
-	// Scene
-	{
-		DescriptorSet sceneSet;
-		sceneSet.init(descriptorSetLayouts.scene, &this->descriptorSets[imageIndex].scene, &this->descriptorPools[imageIndex]);
-		sceneSet.setBufferDesc(0, sceneUBOs[imageIndex].getDescriptor());
-		sceneSet.update();
-	}
 
 	// Nodes, Materials and Models
 	for (auto& drawData : drawBatch)

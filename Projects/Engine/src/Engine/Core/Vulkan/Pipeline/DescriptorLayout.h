@@ -16,6 +16,7 @@ namespace ym
 		void add(VkDescriptorSetLayoutBinding* descriptor);
 
 		void init();
+		void destroy();
 
 		VkDescriptorSetLayout getLayout() const;
 		std::vector<VkDescriptorPoolSize> getPoolSizes(uint32_t factor) const;

@@ -15,7 +15,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	float aspect = ym::Display::get()->getAspectRatio();
 	this->camera.init(aspect, 45.f, { 0.f, 2, 0.f }, { 0.f, 2, 1.f }, 1.0f, 10.0f);
 
-	renderer->setCamera(&this->camera);
+	renderer->setActiveCamera(&this->camera);
 }
 
 void SandboxLayer::onUpdate(float dt)

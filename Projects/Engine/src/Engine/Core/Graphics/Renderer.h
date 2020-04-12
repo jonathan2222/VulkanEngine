@@ -6,6 +6,7 @@
 #include "Engine/Core/Graphics/ModelRenderer.h"
 #include "Engine/Core/Vulkan/Pipeline/RenderPass.h"
 #include "Engine/Core/Camera.h"
+#include "Engine/Core/Graphics/SceneData.h"
 
 namespace ym
 {
@@ -25,7 +26,7 @@ namespace ym
 		void preDestroy();
 		void destroy();
 
-		void setCamera(Camera* camera);
+		void setActiveCamera(Camera* camera);
 
 		/*
 			Begin frame. Will return true if succeeded, false if the swap chain needs to be recreated.
@@ -62,6 +63,8 @@ namespace ym
 
 		void submit();
 
+		void setupSceneDescriptors();
+
 	private:
 		SwapChain swapChain;
 		std::vector<Framebuffer> framebuffers;
@@ -69,6 +72,12 @@ namespace ym
 		Texture* depthTexture;
 
 		ModelRenderer modelRenderer;
+
+		// Scene data
+		Camera* activeCamera{ nullptr };
+		std::vector<UniformBuffer> sceneUBOs;
+		DescriptorPool descriptorPool;
+		SceneDescriptors sceneDescriptors;
 
 		// Recording
 		std::vector<CommandBuffer*> primaryCommandBuffers;

@@ -53,6 +53,15 @@ namespace ym
 		YM_ASSERT(result == VK_SUCCESS, "Failed to create descriptor set layout!");
 	}
 
+	void DescriptorLayout::destroy()
+	{
+		if (this->layout != VK_NULL_HANDLE)
+		{
+			vkDestroyDescriptorSetLayout(VulkanInstance::get()->getLogicalDevice(), this->layout, nullptr);
+			this->layout = VK_NULL_HANDLE;
+		}
+	}
+
 	VkDescriptorSetLayout DescriptorLayout::getLayout() const
 	{
 		return this->layout;
