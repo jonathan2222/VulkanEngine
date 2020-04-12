@@ -8,6 +8,7 @@
 #include "Engine/Core/Vulkan/Pipeline/Pipeline.h"
 #include "Engine/Core/Vulkan/Pipeline/Shader.h"
 #include "Engine/Core/Vulkan/Pipeline/DescriptorLayout.h"
+#include "Engine/Core/Vulkan/Pipeline/DescriptorPool.h"
 #include "Engine/Core/Vulkan/Buffers/UniformBuffer.h"
 #include "Engine/Core/Vulkan/Buffers/StorageBuffer.h"
 #include "Engine/Core/Camera.h"
@@ -19,8 +20,6 @@ namespace ym
 	public:
 		ModelRenderer();
 		virtual ~ModelRenderer();
-
-		static ModelRenderer* get();
 
 		void init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass);
 		void destroy();
@@ -96,7 +95,7 @@ namespace ym
 		std::vector<UniformBuffer> sceneUBOs;
 
 		// Descriptors
-		std::vector<VkDescriptorPool> descriptorPools;
+		std::vector<DescriptorPool> descriptorPools;
 		struct DescriptorSetLayouts
 		{
 			DescriptorLayout scene;		// Holds camera data and other global data for the scene.
@@ -104,11 +103,11 @@ namespace ym
 			DescriptorLayout node;		// Holds local node transformations. (This will be the same for every instance of the same model)
 			DescriptorLayout material;	// Holds data of a specific material.
 		} descriptorSetLayouts;
-		struct DescriptorSet
+		struct DescriptorSetData
 		{
 			VkDescriptorSet scene = VK_NULL_HANDLE;
 		};
-		std::vector<DescriptorSet> descriptorSets;
+		std::vector<DescriptorSetData> descriptorSets;
 
 		// Thread data
 		std::vector<CommandBuffer*> commandBuffers;

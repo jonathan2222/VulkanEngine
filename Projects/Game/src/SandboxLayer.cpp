@@ -13,7 +13,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	//ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Sponza/glTF/Sponza.gltf", &this->sponzaModel);
 
 	float aspect = ym::Display::get()->getAspectRatio();
-	this->camera.init(aspect, 45.f, { 0.f, 0, 0.f }, { 0.f, 0, 1.f }, 1.0f, 10.0f);
+	this->camera.init(aspect, 45.f, { 0.f, 2, 0.f }, { 0.f, 2, 1.f }, 1.0f, 10.0f);
 
 	renderer->setCamera(&this->camera);
 }
@@ -49,27 +49,35 @@ void SandboxLayer::onUpdate(float dt)
 void SandboxLayer::onRender(ym::Renderer* renderer)
 {
 	renderer->begin();
+
+	static int32_t max = 20;
+	static float r = max;
+	ym::Input* input = ym::Input::get();
+	ym::KeyState keyState = input->getKeyState(ym::Key::E);
+	if (keyState == ym::KeyState::FIRST_RELEASED)
+		r = ++max;
 	std::vector<glm::mat4> transforms;
-	const int32_t max = 10;
-	const float dist = 50.0f;
 	for (int32_t i = 0; i < max; i++)
 	{
+		
+		float angle = (float)i / (float)max * 2*glm::pi<float>();
+		float x = glm::cos(angle)*r;
+		float z = glm::sin(angle)*r;
 		auto transform = glm::mat4(1.0f);
-		transform = glm::translate(glm::mat4(1.0f), { dist*(i - max/2), 0.f, 10.f}) * transform;
+		transform = glm::translate(glm::mat4(1.0f), { x, 0.f, z}) * transform;
 		transforms.push_back(transform);
 	}
 	renderer->drawModel(&this->model, transforms);
 
 	static bool spawn = false;
-	ym::Input* input = ym::Input::get();
-	ym::KeyState keyState = input->getKeyState(ym::Key::F);
+	keyState = input->getKeyState(ym::Key::F);
 	if (keyState == ym::KeyState::FIRST_RELEASED)
 		spawn ^= 1;
 	if (spawn)
 	{
 		auto transform = glm::mat4(10.0f);
 		transform[3][3] = 1.0f;
-		transform = glm::translate(glm::mat4(1.0f), { 0.0f, 1.f, 0.f }) * transform;
+		transform = glm::translate(glm::mat4(1.0f), { 0.0f, 2.f, 0.f }) * transform;
 		renderer->drawModel(&this->waterBottleModel, transform);
 	}
 
@@ -77,8 +85,10 @@ void SandboxLayer::onRender(ym::Renderer* renderer)
 	transform[3][3] = 1.0f;
 	transform = glm::translate(glm::mat4(1.0f), { 0.0f, -100.f, 0.f }) * transform;
 	renderer->drawModel(&this->cubeModel, transform);
-
-	//renderer->drawModel(&this->sponzaModel);
+	
+	//transform = glm::mat4(1.0f);
+	//transform = glm::translate(glm::mat4(1.0f), { 0.0f, 1.f, 0.f }) * transform;
+	//renderer->drawModel(&this->sponzaModel, transform);
 
 	renderer->end();
 }

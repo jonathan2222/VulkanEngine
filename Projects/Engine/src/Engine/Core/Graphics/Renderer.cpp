@@ -198,7 +198,7 @@ void ym::Renderer::createFramebuffers(VkImageView depthAttachment)
 
 void ym::Renderer::createSyncObjects()
 {
-	this->framesInFlight = 3;
+	this->framesInFlight = this->swapChain.getNumImages()-1;
 	this->imageAvailableSemaphores.resize(this->framesInFlight);
 	this->renderFinishedSemaphores.resize(this->framesInFlight);
 	this->inFlightFences.resize(this->framesInFlight);
@@ -265,5 +265,4 @@ void ym::Renderer::submit()
 
 	vkResetFences(VulkanInstance::get()->getLogicalDevice(), 1, &this->inFlightFences[this->currentFrame]);
 	VULKAN_CHECK(vkQueueSubmit(VulkanInstance::get()->getGraphicsQueue().queue, 1, &submitInfo, this->inFlightFences[this->currentFrame]), "Failed to sumbit commandbuffer!");
-
 }

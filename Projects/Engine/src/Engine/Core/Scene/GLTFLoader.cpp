@@ -13,7 +13,6 @@
 #include "Engine/Core/Vulkan/CommandBuffer.h"
 
 #include "Engine/Core/Vulkan/Pipeline/Pipeline.h"
-#include "Engine/Core/Vulkan/Pipeline/DescriptorManager.h"
 
 #include <glm/gtc/matrix_transform.hpp> // translate() and scale()
 #include <glm/gtx/quaternion.hpp>		// toMat4()
