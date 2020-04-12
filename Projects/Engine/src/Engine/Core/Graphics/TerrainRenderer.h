@@ -8,6 +8,7 @@
 #include "Engine/Core/Vulkan/Pipeline/Shader.h"
 #include "Engine/Core/Vulkan/Pipeline/Pipeline.h"
 #include "Engine/Core/Camera.h"
+#include "Engine/Core/Graphics/SceneData.h"
 
 namespace ym
 {
@@ -17,13 +18,13 @@ namespace ym
 		TerrainRenderer();
 		~TerrainRenderer();
 
-		void init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass);
+		void init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass, SceneDescriptors* sceneDescriptors);
 		void destroy();
 
 		/*
 			Set the active camera which will be used when drawing.
 		*/
-		void setCamera(Camera* camera);
+		void setActiveCamera(Camera* camera);
 
 		/*
 			Prepare to draw.
@@ -64,6 +65,7 @@ namespace ym
 		SwapChain* swapChain;
 		VkCommandBufferInheritanceInfo inheritanceInfo;
 		Camera* activeCamera{ nullptr };
+		SceneDescriptors* sceneDescriptors{ nullptr };
 
 		std::vector<bool> shouldRecreateDescriptors;
 		std::vector<std::map<uint64_t, DrawData>> drawBatch;

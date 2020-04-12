@@ -13,10 +13,11 @@ ym::TerrainRenderer::~TerrainRenderer()
 {
 }
 
-void ym::TerrainRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass)
+void ym::TerrainRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass, SceneDescriptors* sceneDescriptors)
 {
 	this->swapChain = swapChain;
 	this->threadID = threadID;
+	this->sceneDescriptors = sceneDescriptors;
 	this->commandPool.init(CommandPool::Queue::GRAPHICS, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 	this->commandBuffers = this->commandPool.createCommandBuffers(this->swapChain->getNumImages(), VK_COMMAND_BUFFER_LEVEL_SECONDARY);
 }
@@ -26,8 +27,9 @@ void ym::TerrainRenderer::destroy()
 	this->commandPool.destroy();
 }
 
-void ym::TerrainRenderer::setCamera(Camera* camera)
+void ym::TerrainRenderer::setActiveCamera(Camera* camera)
 {
+	this->activeCamera = camera;
 }
 
 void ym::TerrainRenderer::begin(uint32_t imageIndex, VkCommandBufferInheritanceInfo inheritanceInfo)
