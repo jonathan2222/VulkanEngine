@@ -1,5 +1,7 @@
 #include "SandboxLayer.h"
 
+#include <glTF/stb_image.h>
+
 #include "Engine/Core/Scene/GLTFLoader.h"
 #include "Engine/Core/Graphics/Renderer.h"
 #include "Engine/Core/Display/Display.h"
@@ -11,6 +13,24 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Cube/Cube.gltf", &this->cubeModel);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/WaterBottle/WaterBottle.glb", &this->waterBottleModel);
 	//ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Sponza/glTF/Sponza.gltf", &this->sponzaModel);
+
+	int width, height;
+	int channels;
+	std::string path = YM_ASSETS_FILE_PATH + "/Textures/Heightmaps/australia.jpg";
+	unsigned char* data = static_cast<unsigned char*>(stbi_load(path.c_str(), &width, &height, &channels, 1));
+	if (data == nullptr)
+		YM_LOG_ERROR("Failed to load terrain, couldn't find file!");
+	else {
+		float scale = 2.0f;
+		ym::Terrain::Description terrainDescription = {};
+		terrainDescription.vertDist = scale;
+		terrainDescription.minZ = 0.0f;
+		terrainDescription.maxZ = 20.0f;
+		terrainDescription.origin = glm::vec3(-(width / 2.f) * scale, 0.f, -(height / 2.f) * scale);
+		this->terrain.init(width, height, data, terrainDescription);
+		YM_LOG_INFO("Loaded terrain: {} successfully!", path);
+		delete[] data;
+	}
 
 	float aspect = ym::Display::get()->getAspectRatio();
 	this->camera.init(aspect, 45.f, { 0.f, 2, 0.f }, { 0.f, 2, 1.f }, 1.0f, 10.0f);
@@ -50,22 +70,24 @@ void SandboxLayer::onRender(ym::Renderer* renderer)
 {
 	renderer->begin();
 
-	static int32_t max = 20;
+	static int32_t max = 100;
 	static float r = max;
 	ym::Input* input = ym::Input::get();
 	ym::KeyState keyState = input->getKeyState(ym::Key::E);
 	if (keyState == ym::KeyState::FIRST_RELEASED)
 		r = ++max;
-	std::vector<glm::mat4> transforms;
+	static std::vector<glm::mat4> transforms;
 	for (int32_t i = 0; i < max; i++)
 	{
-		
-		float angle = (float)i / (float)max * 2*glm::pi<float>();
-		float x = glm::cos(angle)*r;
-		float z = glm::sin(angle)*r;
-		auto transform = glm::mat4(1.0f);
-		transform = glm::translate(glm::mat4(1.0f), { x, 0.f, z}) * transform;
-		transforms.push_back(transform);
+		if (i >= transforms.size())
+		{
+			float angle = (float)i / (float)max * 2 * glm::pi<float>();
+			float x = glm::cos(angle) * r;
+			float z = glm::sin(angle) * r;
+			auto transform = glm::mat4(1.0f);
+			transform = glm::translate(glm::mat4(1.0f), { x, 0.f, z });
+			transforms.push_back(transform);
+		}
 	}
 	renderer->drawModel(&this->model, transforms);
 
@@ -90,6 +112,8 @@ void SandboxLayer::onRender(ym::Renderer* renderer)
 	//transform = glm::translate(glm::mat4(1.0f), { 0.0f, 1.f, 0.f }) * transform;
 	//renderer->drawModel(&this->sponzaModel, transform);
 
+	//renderer->drawTerrain(&this->terrain, glm::mat4(1.0f));
+
 	renderer->end();
 }
 
@@ -104,5 +128,6 @@ void SandboxLayer::onQuit()
 	this->cubeModel.destroy();
 	this->waterBottleModel.destroy();
 	//this->sponzaModel.destroy();
+	this->terrain.destroy();
 	this->camera.destroy();
 }

@@ -2,6 +2,7 @@
 
 #include "Engine/Core/Application/Layer.h"
 #include "Engine/Core/Scene/Model/Model.h"
+#include "Engine/Core/Scene/Terrain/Terrain.h"
 #include "Engine/Core/Camera.h"
 
 class SandboxLayer : public ym::Layer
@@ -19,5 +20,6 @@ private:
 	ym::Model cubeModel;
 	ym::Model waterBottleModel;
 	ym::Model sponzaModel;
+	ym::Terrain terrain;
 	ym::Camera camera;
 };

@@ -9,5 +9,10 @@
 
   "Debuglayer": {
     "active": true
+  },
+
+  "Terrain": {
+    "regionSize": 20,
+    "proximityRadius": 5 
   }
 }

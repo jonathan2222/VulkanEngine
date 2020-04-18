@@ -12,14 +12,14 @@ layout(set=0, binding = 0) uniform SceneData
     vec4 cPos;
 } scene;
 
-layout(set=1, binding=0) uniform NodeData
-{
-    mat4 transform;
-} node;
-
-layout(set=3, binding = 0) readonly buffer TransformData
+layout(set=1, binding = 0) readonly buffer TransformData
 {
     mat4 modelTransform[];
+};
+
+layout(set = 1, binding = 0) uniform TerrainData
+{
+    mat4 transform;
 };
 
 layout(location = 0) out vec3 fragNormal;
@@ -28,10 +28,10 @@ layout(location = 2) out vec3 fragPos;
 layout(location = 3) out vec3 camPos;
 
 void main() {
-    vec4 worldPosition = modelTransform[gl_InstanceIndex] * node.transform * vec4(position.xyz, 1.0);
+    vec4 worldPosition = transform * vec4(position.xyz, 1.0);
     fragPos = worldPosition.xyz;
     gl_Position = scene.proj * scene.view * worldPosition;
-    fragNormal = normalize((modelTransform[gl_InstanceIndex] * node.transform * vec4(normal.xyz, 0.0)).xyz);
+    fragNormal = normalize((transform * vec4(normal.xyz, 0.0)).xyz);
     fragUv = texCoords.xy;
     camPos = scene.cPos.xyz;
 }

@@ -33,12 +33,16 @@ void ym::Renderer::init()
 	// Each renderer has a corresponding thread.
 	this->modelRenderer.init(&this->swapChain, (uint32_t)ERendererType::RENDER_TYPE_MODEL, &this->renderPass, &this->sceneDescriptors); // Uses thread 0.
 
+	this->terrainRenderer.init(&this->swapChain, (uint32_t)ERendererType::RENDER_TYPE_TERRAIN, &this->renderPass, &this->sceneDescriptors); // Uses thread 1.
+
 	GLTFLoader::init();
 
 	createSyncObjects();
 
 	CommandPool& graphicsPool = LayerManager::get()->getCommandPools()->graphicsPool;
-	this->primaryCommandBuffers = graphicsPool.createCommandBuffers(this->swapChain.getNumImages(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	this->primaryCommandBuffersGraphics = graphicsPool.createCommandBuffers(this->swapChain.getNumImages(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	CommandPool& computePool = LayerManager::get()->getCommandPools()->computePool;
+	this->primaryCommandBuffersCompute = computePool.createCommandBuffers(this->swapChain.getNumImages(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 }
 
 void ym::Renderer::preDestroy()
@@ -53,6 +57,7 @@ void ym::Renderer::destroy()
 
 	// Destroy sub-renderers.
 	this->modelRenderer.destroy();
+	this->terrainRenderer.destroy();
 
 	// Destroy scene data.
 	for (UniformBuffer& ubo : this->sceneUBOs)
@@ -72,6 +77,7 @@ void ym::Renderer::destroy()
 void ym::Renderer::setActiveCamera(Camera* camera)
 {
 	this->activeCamera = camera;
+	this->terrainRenderer.setActiveCamera(camera);
 }
 
 bool ym::Renderer::begin()
@@ -106,6 +112,7 @@ bool ym::Renderer::begin()
 	this->inheritanceInfo.renderPass = this->renderPass.getRenderPass();
 
 	this->modelRenderer.begin(this->imageIndex, this->inheritanceInfo);
+	this->terrainRenderer.begin(this->imageIndex, this->inheritanceInfo);
 
 	return true;
 }
@@ -126,6 +133,11 @@ void ym::Renderer::drawModel(Model* model, const std::vector<glm::mat4>& transfo
 	this->modelRenderer.drawModel(this->imageIndex, model, transforms);
 }
 
+void ym::Renderer::drawTerrain(Terrain* terrain, const glm::mat4& transform)
+{
+	this->terrainRenderer.drawTerrain(this->imageIndex, terrain, transform);
+}
+
 bool ym::Renderer::end()
 {
 	// Update camera.
@@ -137,6 +149,7 @@ bool ym::Renderer::end()
 
 	// End renderers.
 	this->modelRenderer.end(this->imageIndex);
+	this->terrainRenderer.end(this->imageIndex);
 
 	// Submit all work.
 	submit();
@@ -221,6 +234,7 @@ void ym::Renderer::createSyncObjects()
 	this->framesInFlight = this->swapChain.getNumImages()-1;
 	this->imageAvailableSemaphores.resize(this->framesInFlight);
 	this->renderFinishedSemaphores.resize(this->framesInFlight);
+	this->computeSemaphores.resize(this->framesInFlight);
 	this->inFlightFences.resize(this->framesInFlight);
 	this->imagesInFlight.resize(this->swapChain.getNumImages(), VK_NULL_HANDLE);
 
@@ -233,6 +247,7 @@ void ym::Renderer::createSyncObjects()
 	for (uint32_t i = 0; i < this->framesInFlight; i++) {
 		VULKAN_CHECK(vkCreateSemaphore(VulkanInstance::get()->getLogicalDevice(), &SemaCreateInfo, nullptr, &this->imageAvailableSemaphores[i]), "Failed to create image available semaphores");
 		VULKAN_CHECK(vkCreateSemaphore(VulkanInstance::get()->getLogicalDevice(), &SemaCreateInfo, nullptr, &this->renderFinishedSemaphores[i]), "Failed to create render finished semaphores");
+		VULKAN_CHECK(vkCreateSemaphore(VulkanInstance::get()->getLogicalDevice(), &SemaCreateInfo, nullptr, &this->computeSemaphores[i]), "Failed to create compute semaphores");
 		VULKAN_CHECK(vkCreateFence(VulkanInstance::get()->getLogicalDevice(), &fenceCreateInfo, nullptr, &this->inFlightFences[i]), "Failed to create in flight fences");
 	}
 }
@@ -242,49 +257,102 @@ void ym::Renderer::destroySyncObjects()
 	for (uint32_t i = 0; i < this->framesInFlight; i++) {
 		vkDestroySemaphore(VulkanInstance::get()->getLogicalDevice(), this->imageAvailableSemaphores[i], nullptr);
 		vkDestroySemaphore(VulkanInstance::get()->getLogicalDevice(), this->renderFinishedSemaphores[i], nullptr);
+		vkDestroySemaphore(VulkanInstance::get()->getLogicalDevice(), this->computeSemaphores[i], nullptr);
 		vkDestroyFence(VulkanInstance::get()->getLogicalDevice(), this->inFlightFences[i], nullptr);
 	}
 }
 
 void ym::Renderer::submit()
 {
-	// Gather all secondary buffers. (One in this case)
-	std::vector<CommandBuffer*>& secondaryBuffers = this->modelRenderer.getBuffers();
-	std::vector<VkCommandBuffer> vkCommands;
-	vkCommands.push_back(secondaryBuffers[this->imageIndex]->getCommandBuffer());
+	VulkanInstance* instance = VulkanInstance::get();
+	// Compute
+	/*{
+		// Gather all secondary buffers.
+		std::vector<CommandBuffer*>& secondaryBuffers = this->terrainRenderer.getComputeBuffers();
+		std::vector<VkCommandBuffer> vkCommands;
+		vkCommands.push_back(secondaryBuffers[this->imageIndex]->getCommandBuffer());
 
-	// Record and execute them on the current primary command buffer.
-	CommandBuffer* buffer = this->primaryCommandBuffers[this->imageIndex];
-	buffer->begin(0, nullptr);
-	std::vector<VkClearValue> clearValues = {};
-	VkClearValue value;
-	value.color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	clearValues.push_back(value);
-	value.depthStencil = { 1.0f, 0 };
-	clearValues.push_back(value);
-	buffer->cmdBeginRenderPass(&this->renderPass, this->framebuffers[this->imageIndex].getFramebuffer(), this->swapChain.getExtent(), clearValues, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-	buffer->cmdExecuteCommands((uint32_t)vkCommands.size(), vkCommands.data());
-	buffer->cmdEndRenderPass();
-	buffer->end();
+		CommandBuffer* buffer = this->primaryCommandBuffersCompute[this->imageIndex];
+		{
+			buffer->begin(0, nullptr);
 
-	// Submit commands to GPU.
-	const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT };
-	std::vector<VkSemaphore> waitSemaphores = { this->imageAvailableSemaphores[this->currentFrame] };
-	VkSemaphore signalSemaphores[] = { this->renderFinishedSemaphores[this->currentFrame] };
-	std::vector<VkCommandBuffer> buffers = { buffer->getCommandBuffer() };
+			this->terrainRenderer.preRecordCompute(this->imageIndex, buffer);
+			buffer->cmdExecuteCommands((uint32_t)vkCommands.size(), vkCommands.data());
+			this->terrainRenderer.postRecordCompute(this->imageIndex, buffer);
 
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.waitSemaphoreCount = (uint32_t)waitSemaphores.size();
-	submitInfo.pWaitSemaphores = waitSemaphores.data();
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = signalSemaphores;
-	submitInfo.pCommandBuffers = buffers.data();
-	submitInfo.commandBufferCount = (uint32_t)buffers.size();
+			buffer->end();
+		}
 
-	vkResetFences(VulkanInstance::get()->getLogicalDevice(), 1, &this->inFlightFences[this->currentFrame]);
-	VULKAN_CHECK(vkQueueSubmit(VulkanInstance::get()->getGraphicsQueue().queue, 1, &submitInfo, this->inFlightFences[this->currentFrame]), "Failed to sumbit commandbuffer!");
+		// Submit commands to GPU.
+		VkSubmitInfo computeSubmitInfo = { };
+		computeSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		std::vector<VkPipelineStageFlags> waitStages;
+		std::vector<VkSemaphore> waitSemaphores;
+		computeSubmitInfo.waitSemaphoreCount = waitSemaphores.size();
+		computeSubmitInfo.pWaitSemaphores = waitSemaphores.data();
+		computeSubmitInfo.pWaitDstStageMask = waitStages.data();
+
+		std::array<VkCommandBuffer, 1> buff = { buffer->getCommandBuffer() };
+		computeSubmitInfo.commandBufferCount = buff.size();
+		computeSubmitInfo.pCommandBuffers = buff.data();
+		computeSubmitInfo.signalSemaphoreCount = 1;
+		computeSubmitInfo.pSignalSemaphores = &this->computeSemaphores[this->currentFrame];
+
+		VulkanQueue& computeQueue = instance->getComputeQueue();
+		VULKAN_CHECK(vkQueueSubmit(computeQueue.queue, 1, &computeSubmitInfo, VK_NULL_HANDLE), "Failed to submit compute queue!");
+	}*/
+
+	// Graphics
+	{
+		// Gather all secondary buffers.
+		std::vector<VkCommandBuffer> vkCommands;
+		std::vector<CommandBuffer*>& secondaryBuffers = this->modelRenderer.getBuffers();
+		vkCommands.push_back(secondaryBuffers[this->imageIndex]->getCommandBuffer());
+		std::vector<CommandBuffer*>& secondaryBuffers2 = this->terrainRenderer.getGraphicsBuffers();
+		vkCommands.push_back(secondaryBuffers2[this->imageIndex]->getCommandBuffer());
+
+		// Record and execute them on the current primary command buffer.
+		CommandBuffer* buffer = this->primaryCommandBuffersGraphics[this->imageIndex];
+		{
+			buffer->begin(0, nullptr);
+
+			this->terrainRenderer.preRecordGraphics(this->imageIndex, buffer);
+
+			std::vector<VkClearValue> clearValues = {};
+			VkClearValue value;
+			value.color = { 0.0f, 0.0f, 0.0f, 1.0f };
+			clearValues.push_back(value);
+			value.depthStencil = { 1.0f, 0 };
+			clearValues.push_back(value);
+			buffer->cmdBeginRenderPass(&this->renderPass, this->framebuffers[this->imageIndex].getFramebuffer(), this->swapChain.getExtent(), clearValues, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+			buffer->cmdExecuteCommands((uint32_t)vkCommands.size(), vkCommands.data());
+			buffer->cmdEndRenderPass();
+
+			this->terrainRenderer.postRecordGraphics(this->imageIndex, buffer);
+
+			buffer->end();
+		}
+
+		// Submit commands to GPU.
+		const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT };
+		std::vector<VkSemaphore> waitSemaphores = { this->imageAvailableSemaphores[this->currentFrame] };
+		VkSemaphore signalSemaphores[] = { this->renderFinishedSemaphores[this->currentFrame] };
+		std::vector<VkCommandBuffer> buffers = { buffer->getCommandBuffer() };
+
+		VkSubmitInfo submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pWaitDstStageMask = waitStages;
+		submitInfo.waitSemaphoreCount = (uint32_t)waitSemaphores.size();
+		submitInfo.pWaitSemaphores = waitSemaphores.data();
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = signalSemaphores;
+		submitInfo.pCommandBuffers = buffers.data();
+		submitInfo.commandBufferCount = (uint32_t)buffers.size();
+
+		VulkanQueue& graphicsQueue = instance->getGraphicsQueue();
+		vkResetFences(instance->getLogicalDevice(), 1, &this->inFlightFences[this->currentFrame]);
+		VULKAN_CHECK(vkQueueSubmit(graphicsQueue.queue, 1, &submitInfo, this->inFlightFences[this->currentFrame]), "Failed to sumbit commandbuffer!");
+	}
 }
 
 void ym::Renderer::setupSceneDescriptors()

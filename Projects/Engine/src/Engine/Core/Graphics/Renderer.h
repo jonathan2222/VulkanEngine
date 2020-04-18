@@ -4,20 +4,24 @@
 #include "Engine/Core/Vulkan/SwapChain.h"
 #include "Engine/Core/Vulkan/Buffers/Framebuffer.h"
 #include "Engine/Core/Graphics/ModelRenderer.h"
+#include "Engine/Core/Graphics/TerrainRenderer.h"
 #include "Engine/Core/Vulkan/Pipeline/RenderPass.h"
 #include "Engine/Core/Camera.h"
 #include "Engine/Core/Graphics/SceneData.h"
 
 namespace ym
 {
+	class Terrain;
 	class Renderer
 	{
 	public:
 		enum ERendererType
 		{
 			RENDER_TYPE_MODEL = 0,
+			RENDER_TYPE_TERRAIN = 1,
 			RENDER_TYPE_SIZE
 		};
+
 	public:
 		Renderer();
 		virtual ~Renderer();
@@ -49,6 +53,11 @@ namespace ym
 		void drawModel(Model* model, const std::vector<glm::mat4>& transforms);
 
 		/*
+			Draw a terrain object with frustum culling.
+		*/
+		void drawTerrain(Terrain* terrain, const glm::mat4& transform);
+
+		/*
 			End frame. Will return true if succeeded, false if the swap chain needs to be recreated.
 		*/
 		bool end();
@@ -72,6 +81,7 @@ namespace ym
 		Texture* depthTexture;
 
 		ModelRenderer modelRenderer;
+		TerrainRenderer terrainRenderer;
 
 		// Scene data
 		Camera* activeCamera{ nullptr };
@@ -80,12 +90,14 @@ namespace ym
 		SceneDescriptors sceneDescriptors;
 
 		// Recording
-		std::vector<CommandBuffer*> primaryCommandBuffers;
+		std::vector<CommandBuffer*> primaryCommandBuffersGraphics;
+		std::vector<CommandBuffer*> primaryCommandBuffersCompute;
 		VkCommandBufferInheritanceInfo inheritanceInfo;
 
 		// Sync objects
 		std::vector<VkSemaphore> imageAvailableSemaphores;
 		std::vector<VkSemaphore> renderFinishedSemaphores;
+		std::vector<VkSemaphore> computeSemaphores;
 		std::vector<VkFence> inFlightFences;
 		std::vector<VkFence> imagesInFlight;
 		uint32_t framesInFlight;

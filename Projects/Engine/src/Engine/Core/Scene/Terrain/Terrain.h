@@ -13,8 +13,19 @@ namespace ym
 			float minZ;
 			float maxZ;
 			float vertDist;
-			int32_t proximityRadius;
 			glm::vec3 origin;
+		};
+
+		struct ProximityDescription
+		{
+			int32_t regionSize;
+			int32_t proximityRadius;
+			// Can be calculated from the two above.
+			int32_t proximityWidth;
+			int32_t indiciesPerRegion;
+			// Need to know the dataWidth to calculate these.
+			int32_t regionCount;
+			int32_t regionWidthCount;
 		};
 
 	public:
@@ -22,13 +33,16 @@ namespace ym
 		void destroy();
 
 		float getHeightAt(const glm::vec3& pos) const;
-		glm::ivec2 getRegionFromPos(const glm::vec3& pos) const;
-		void getProximityVertices(const glm::vec3& pos, std::vector<Vertex>& vertices) const;
+		glm::ivec2 getRegionFromPos(const glm::vec3& pos, int32_t regionSize) const;
 
-		uint32_t getProximityIndiciesSize();
-		std::vector<uint32_t> generateIndicies();
+		void fetchVertices(int32_t proximityWidth, const glm::vec3& pos, std::vector<Vertex>& verticesOut) const;
 
 		uint64_t getUniqueID() const;
+		VkDescriptorSet& getDescriptorSet();
+		int32_t getRegionCount() const;
+		glm::vec3 getOrigin() const;
+
+		static Terrain::ProximityDescription createProximityDescription(int32_t dataWidth, int32_t regionSize, int32_t proximityRadius);
 
 	private:
 		void generateVertices(uint32_t dataWidth, uint32_t dataHeight, uint8_t* data);
@@ -41,12 +55,9 @@ namespace ym
 
 		Description desc;
 		std::vector<Vertex> vertices;
-
-		int32_t proxVertDim;
-		int32_t indiciesPerRegion;
-		int32_t regionSize;
-		int32_t regionCount;
-		int32_t regionWidthCount;
+		VkDescriptorSet descriptorSet{ VK_NULL_HANDLE };
+		VkDescriptorBufferInfo bufferInfo;
+		ProximityDescription proximityDescription;
 
 		int32_t width;
 		int32_t height;

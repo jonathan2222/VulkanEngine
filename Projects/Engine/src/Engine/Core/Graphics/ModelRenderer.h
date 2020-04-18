@@ -59,7 +59,7 @@ namespace ym
 			VkDescriptorSet descriptorSet;
 		};
 
-		void recordModel(Model* model, uint32_t imageIndex, VkDescriptorSet instanceDescriptorSet, uint32_t instanceCount, CommandBuffer* cmdBuffer, VkCommandBufferInheritanceInfo inheritanceInfo);
+		void recordModel(Model* model, uint32_t imageIndex, VkDescriptorSet instanceDescriptorSet, uint32_t instanceCount, CommandBuffer* cmdBuffer);
 		void drawNode(uint32_t imageIndex, VkDescriptorSet instanceDescriptorSet, CommandBuffer* commandBuffer, Pipeline* pipeline, Model::Node& node, uint32_t instanceCount);
 		
 		void createDescriptorLayouts();

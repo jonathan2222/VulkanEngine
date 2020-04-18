@@ -11,7 +11,7 @@ namespace ym
 		void init(uint64_t size);
 		void destroy();
 
-		void transfer(void* data, uint64_t size, uint64_t offset);
+		void transfer(const void* data, uint64_t size, uint64_t offset);
 
 		VkDescriptorBufferInfo getDescriptor() const;
 

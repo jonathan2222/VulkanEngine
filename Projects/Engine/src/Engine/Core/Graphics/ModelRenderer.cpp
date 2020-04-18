@@ -126,7 +126,6 @@ void ym::ModelRenderer::end(uint32_t imageIndex)
 		this->shouldRecreateDescriptors[imageIndex] = false;
 	}
 	
-	
 	// Start recording all draw commands on the thread.
 	CommandBuffer* currentBuffer = this->commandBuffers[imageIndex];
 	currentBuffer->begin(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT, &inheritanceInfo);
@@ -139,7 +138,7 @@ void ym::ModelRenderer::end(uint32_t imageIndex)
 				uint32_t instanceCount = (uint32_t)drawData.second.transforms.size();
 				drawData.second.transformsBuffer.transfer(drawData.second.transforms.data(), sizeof(glm::mat4) * instanceCount, 0);
 				ThreadManager::addWork(this->threadID, [=]() {
-					recordModel(drawData.second.model, imageIndex, drawData.second.descriptorSet, instanceCount, currentBuffer, inheritanceInfo);
+					recordModel(drawData.second.model, imageIndex, drawData.second.descriptorSet, instanceCount, currentBuffer);
 					});
 			}
 		}
@@ -147,7 +146,6 @@ void ym::ModelRenderer::end(uint32_t imageIndex)
 		ThreadManager::wait(this->threadID);
 	};
 	currentBuffer->end();
-	
 }
 
 std::vector<ym::CommandBuffer*>& ym::ModelRenderer::getBuffers()
@@ -155,7 +153,7 @@ std::vector<ym::CommandBuffer*>& ym::ModelRenderer::getBuffers()
 	return this->commandBuffers;
 }
 
-void ym::ModelRenderer::recordModel(Model* model, uint32_t imageIndex, VkDescriptorSet instanceDescriptorSet, uint32_t instanceCount, CommandBuffer* cmdBuffer, VkCommandBufferInheritanceInfo inheritanceInfo)
+void ym::ModelRenderer::recordModel(Model* model, uint32_t imageIndex, VkDescriptorSet instanceDescriptorSet, uint32_t instanceCount, CommandBuffer* cmdBuffer)
 {
 	if (model->vertexBuffer.getBuffer() == VK_NULL_HANDLE)
 		return;

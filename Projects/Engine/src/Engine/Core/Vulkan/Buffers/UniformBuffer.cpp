@@ -28,7 +28,7 @@ void ym::UniformBuffer::destroy()
 	}
 }
 
-void ym::UniformBuffer::transfer(void* data, uint64_t size, uint64_t offset)
+void ym::UniformBuffer::transfer(const void* data, uint64_t size, uint64_t offset)
 {
 	this->memory.directTransfer(&this->buffer, data, size, offset);
 }

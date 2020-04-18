@@ -6,6 +6,7 @@
 #include "GLFW/glfw3.h"
 #include "../Input/Config.h"
 #include "../Display/Display.h"
+#include "DebugHelper.h"
 
 // Initilize static validation layers
 std::vector<const char*> ym::VulkanInstance::validationLayers = {
@@ -39,6 +40,9 @@ void ym::VulkanInstance::init()
 	VkPhysicalDeviceFeatures deviceFeatures = {};
 	deviceFeatures.samplerAnisotropy = VK_TRUE;
 	deviceFeatures.fillModeNonSolid = VK_TRUE;
+	//deviceFeatures.logicOp = VK_TRUE;
+	//deviceFeatures.pipelineStatisticsQuery = VK_TRUE;
+	deviceFeatures.multiDrawIndirect = VK_TRUE;
 	createLogicalDevice(deviceFeatures);
 }
 
@@ -344,6 +348,14 @@ bool ym::VulkanInstance::checkValidationLayerSupport(const std::vector<const cha
 VKAPI_ATTR VkBool32 VKAPI_CALL ym::VulkanInstance::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
 	YM_LOG_ERROR("validation layer: {0}", pCallbackData->pMessage);
+	/*YM_LOG_ERROR("cmdBufLabelCount: {0}", pCallbackData->cmdBufLabelCount);
+	YM_LOG_ERROR("objectCount: {0}", pCallbackData->objectCount);
+	for (uint32_t i = 0; i < pCallbackData->objectCount; i++)
+	{
+		YM_LOG_ERROR("   Object: {0:x} => {1}", pCallbackData->pObjects[i].objectHandle, NameBinder::getName(pCallbackData->pObjects[i].objectHandle).c_str());
+	}
+	//NameBinder::printContents();
+	YM_LOG_ERROR("queueLabelCount: {0}", pCallbackData->queueLabelCount);*/
 	return VK_FALSE;
 }
 

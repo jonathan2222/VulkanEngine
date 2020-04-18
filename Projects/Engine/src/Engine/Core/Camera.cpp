@@ -37,6 +37,7 @@ namespace ym
 		this->farWidth = this->farHeight * this->aspect;
 
 		this->planes.resize(6);
+		updatePlanes();
 	}
 
 	void Camera::destroy()

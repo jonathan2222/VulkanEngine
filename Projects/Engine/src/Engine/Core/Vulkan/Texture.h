@@ -3,6 +3,7 @@
 #include "stdafx.h"
 #include "Buffers/Image.h"
 #include "Buffers/ImageView.h"
+#include "Buffers/Memory.h"
 #include "VulkanInstance.h"
 
 namespace ym

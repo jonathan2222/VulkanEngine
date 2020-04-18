@@ -1,19 +1,17 @@
 #include "stdafx.h"
 #include "Terrain.h"
+#include "Engine/Core/Vulkan/Factory.h"
+#include "Engine/Core/Input/Config.h"
 
 void ym::Terrain::init(uint32_t dataWidth, uint32_t dataHeight, uint8_t* data, Description description)
 {
+	int32_t regionSize = Config::get()->fetch<int>("Terrain/regionSize");
+	int32_t proximityRadius = Config::get()->fetch<int>("Terrain/proximityRadius");
+	this->proximityDescription = Terrain::createProximityDescription(dataWidth, regionSize, proximityRadius);
+	
 	this->desc = description;
-
-	const int quads = this->regionSize - 1;
-	this->indiciesPerRegion = (quads * quads) * 6;
-
-	int regionCountWidth = 1 + this->desc.proximityRadius* 2;
-	this->proxVertDim = this->regionSize * regionCountWidth - regionCountWidth + 1;
-
-	this->regionWidthCount = static_cast<int32_t>(ceilf((dataWidth - 1) / (float)(this->regionSize - 1)));
-	this->regionCount = this->regionWidthCount * this->regionWidthCount;
-	int32_t padding = this->regionWidthCount * (this->regionSize - 1) + 1 - dataWidth;
+	
+	int32_t padding = this->proximityDescription.regionWidthCount * (this->proximityDescription.regionSize - 1) + 1 - dataWidth;
 
 	this->width = dataWidth + padding;
 	this->height = dataHeight + padding;
@@ -76,9 +74,9 @@ float ym::Terrain::getHeightAt(const glm::vec3& pos) const
 	return height;
 }
 
-glm::ivec2 ym::Terrain::getRegionFromPos(const glm::vec3& pos) const
+glm::ivec2 ym::Terrain::getRegionFromPos(const glm::vec3& pos, int32_t regionSize) const
 {
-	float regionWorldSize = (this->regionSize - 1) * this->desc.vertDist;
+	float regionWorldSize = (regionSize - 1) * this->desc.vertDist;
 
 	float xDistance = pos.x - this->desc.origin.x;
 	float zDistance = pos.z - this->desc.origin.z;
@@ -91,7 +89,7 @@ glm::ivec2 ym::Terrain::getRegionFromPos(const glm::vec3& pos) const
 	return index;
 }
 
-void ym::Terrain::getProximityVertices(const glm::vec3& pos, std::vector<Vertex>& vertices) const
+void ym::Terrain::fetchVertices(int32_t proximityWidth, const glm::vec3& pos, std::vector<Vertex>& verticesOut) const
 {
 	float xDistance = pos.x - this->desc.origin.x;
 	float zDistance = pos.z - this->desc.origin.z;
@@ -101,90 +99,74 @@ void ym::Terrain::getProximityVertices(const glm::vec3& pos, std::vector<Vertex>
 	int zIndex = static_cast<int>(zDistance / this->desc.vertDist);
 
 	// Handle both odd and even vertex count on height map
-	if (this->proxVertDim % 2 != 0) {
+	if (proximityWidth % 2 != 0) {
 		// Odd
-		xIndex -= this->proxVertDim / 2;
-		zIndex -= this->proxVertDim / 2;
+		xIndex -= proximityWidth / 2;
+		zIndex -= proximityWidth / 2;
 	}
 	else {
 		// Even
-		xIndex -= (this->proxVertDim / 2) - 1;
-		zIndex -= (this->proxVertDim / 2) - 1;
+		xIndex -= (proximityWidth / 2) - 1;
+		zIndex -= (proximityWidth / 2) - 1;
 	}
 
 	// Return vertices within proximity off position. {PADDED VERSION}
-	for (int j = 0; j < this->proxVertDim; j++)
+	for (int j = 0; j < proximityWidth; j++)
 	{
 		int zTemp = zIndex + j;
-		for (int i = 0; i < this->proxVertDim; i++)
+		for (int i = 0; i < proximityWidth; i++)
 		{
 			int xTemp = xIndex + i;
 			if ((xTemp >= 0 && xTemp < this->width) && (zTemp >= 0 && zTemp < this->height)) {
 				int offset = xTemp + zTemp * this->width;
-				vertices[(size_t)i + (size_t)j * (size_t)this->proxVertDim] = this->vertices[offset];
+				verticesOut[(size_t)i + (size_t)j * (size_t)proximityWidth] = this->vertices[offset];
 			}
 			else {
 				Vertex padVertex;
 				padVertex.pos = glm::vec3(xTemp, 0.f, zTemp) * this->desc.vertDist + this->desc.origin;
 				padVertex.nor = glm::vec3(0.f, 1.f, 0.f);
 				padVertex.uv0 = glm::vec2(xTemp, zTemp);
-				vertices[(size_t)i + (size_t)j * (size_t)this->proxVertDim] = padVertex;
+				verticesOut[(size_t)i + (size_t)j * (size_t)proximityWidth] = padVertex;
 			}
 		}
 	}
-}
-
-uint32_t ym::Terrain::getProximityIndiciesSize()
-{
-	const uint32_t numQuads = this->regionSize - 1;
-	uint32_t regionCount = static_cast<uint32_t>(ceilf((this->proxVertDim - 1) / (float)(this->regionSize - 1)));
-	uint32_t size = regionCount * regionCount * numQuads * numQuads * 6;
-	return size;
-}
-
-std::vector<uint32_t> ym::Terrain::generateIndicies()
-{
-	std::vector<unsigned> indexData;
-
-	const int numQuads = this->regionSize - 1;
-
-	int regionCount = static_cast<int>(ceilf(((this->desc.proximityRadius - 1) / (float)(this->regionSize - 1))));
-
-	int vertOffsetX = 0;
-	int vertOffsetZ = 0;
-
-	int index = 0;
-	uint32_t size = regionCount * regionCount * numQuads * numQuads * 6;
-	indexData.resize(size);
-	for (int j = 0; j < regionCount; j++)
-	{
-		for (int i = 0; i < regionCount; i++)
-		{
-			for (int z = vertOffsetZ; z < vertOffsetZ + numQuads; z++)
-			{
-				for (int x = vertOffsetX; x < vertOffsetX + numQuads; x++)
-				{
-					// First triangle
-					indexData[index++] = (z * this->desc.proximityRadius + x);
-					indexData[index++] = ((z + 1) * this->desc.proximityRadius + x);
-					indexData[index++] = ((z + 1) * this->desc.proximityRadius + x + 1);
-					// Second triangle
-					indexData[index++] = (z * this->desc.proximityRadius + x);
-					indexData[index++] = ((z + 1) * this->desc.proximityRadius + x + 1);
-					indexData[index++] = (z * this->desc.proximityRadius + x + 1);
-				}
-			}
-			vertOffsetX = (vertOffsetX + numQuads) % (this->desc.proximityRadius - 1);
-		}
-		vertOffsetZ += numQuads;
-	}
-
-	return indexData;
 }
 
 uint64_t ym::Terrain::getUniqueID() const
 {
 	return this->uniqueId;
+}
+
+VkDescriptorSet& ym::Terrain::getDescriptorSet()
+{
+	return this->descriptorSet;
+}
+
+int32_t ym::Terrain::getRegionCount() const
+{
+	return this->proximityDescription.regionCount;
+}
+
+glm::vec3 ym::Terrain::getOrigin() const
+{
+	return this->desc.origin;
+}
+
+ym::Terrain::ProximityDescription ym::Terrain::createProximityDescription(int32_t dataWidth, int32_t regionSize, int32_t proximityRadius)
+{
+	Terrain::ProximityDescription desc;
+	desc.regionSize = regionSize;
+	desc.proximityRadius = proximityRadius;
+
+	const int quads = desc.regionSize - 1;
+	desc.indiciesPerRegion = (quads * quads) * 6;
+
+	int regionCountWidth = 1 + desc.proximityRadius * 2;
+	desc.proximityWidth = desc.regionSize * regionCountWidth - regionCountWidth + 1;
+
+	desc.regionWidthCount = static_cast<int32_t>(ceilf((dataWidth - 1) / (float)(desc.regionSize - 1)));
+	desc.regionCount = desc.regionWidthCount * desc.regionWidthCount;
+	return desc;
 }
 
 void ym::Terrain::generateVertices(uint32_t dataWidth, uint32_t dataHeight, uint8_t* data)

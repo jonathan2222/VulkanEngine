@@ -28,7 +28,7 @@ void ym::StorageBuffer::destroy()
 	}
 }
 
-void ym::StorageBuffer::transfer(void* data, uint64_t size, uint64_t offset)
+void ym::StorageBuffer::transfer(const void* data, uint64_t size, uint64_t offset)
 {
 	this->memory.directTransfer(&this->buffer, data, size, offset);
 }
