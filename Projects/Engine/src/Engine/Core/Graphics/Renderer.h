@@ -5,9 +5,10 @@
 #include "Engine/Core/Vulkan/Buffers/Framebuffer.h"
 #include "Engine/Core/Graphics/ModelRenderer.h"
 #include "Engine/Core/Graphics/TerrainRenderer.h"
+#include "Engine/Core/Graphics/ThreadData.h"
 #include "Engine/Core/Vulkan/Pipeline/RenderPass.h"
 #include "Engine/Core/Camera.h"
-#include "Engine/Core/Graphics/SceneData.h"
+#include "Engine/Core/Graphics/RenderInheritanceData.h"
 
 namespace ym
 {
@@ -72,6 +73,8 @@ namespace ym
 
 		void submit();
 
+		void initInheritenceData();
+		void destroyInheritanceData();
 		void setupSceneDescriptors();
 
 	private:
@@ -80,24 +83,24 @@ namespace ym
 		RenderPass renderPass;
 		Texture* depthTexture;
 
+		RenderInheritanceData renderInheritanceData;
 		ModelRenderer modelRenderer;
-		TerrainRenderer terrainRenderer;
+		//TerrainRenderer terrainRenderer;
 
 		// Scene data
 		Camera* activeCamera{ nullptr };
 		std::vector<UniformBuffer> sceneUBOs;
 		DescriptorPool descriptorPool;
-		SceneDescriptors sceneDescriptors;
 
 		// Recording
 		std::vector<CommandBuffer*> primaryCommandBuffersGraphics;
-		std::vector<CommandBuffer*> primaryCommandBuffersCompute;
+		//std::vector<CommandBuffer*> primaryCommandBuffersCompute;
 		VkCommandBufferInheritanceInfo inheritanceInfo;
 
 		// Sync objects
 		std::vector<VkSemaphore> imageAvailableSemaphores;
 		std::vector<VkSemaphore> renderFinishedSemaphores;
-		std::vector<VkSemaphore> computeSemaphores;
+		//std::vector<VkSemaphore> computeSemaphores;
 		std::vector<VkFence> inFlightFences;
 		std::vector<VkFence> imagesInFlight;
 		uint32_t framesInFlight;

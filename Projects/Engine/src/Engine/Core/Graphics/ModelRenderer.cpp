@@ -3,6 +3,7 @@
 #include "Engine/Core/Threading/ThreadManager.h"
 #include "Engine/Core/Scene/Vertex.h"
 #include "Engine/Core/Vulkan/Pipeline/DescriptorSet.h"
+#include "Renderer.h"
 
 ym::ModelRenderer::ModelRenderer()
 {
@@ -14,7 +15,7 @@ ym::ModelRenderer::~ModelRenderer()
 {
 }
 
-void ym::ModelRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass, SceneDescriptors* sceneDescriptors)
+void ym::ModelRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass, RenderInheritanceData* renderInheritanceData)
 {
 	this->swapChain = swapChain;
 	this->threadID = threadID;
@@ -27,10 +28,10 @@ void ym::ModelRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass
 
 	this->shouldRecreateDescriptors.resize(this->swapChain->getNumImages(), false);
 	this->descriptorPools.resize(this->swapChain->getNumImages());
-	this->sceneDescriptors = sceneDescriptors;
+	this->renderInheritanceData = renderInheritanceData;
 
 	createDescriptorLayouts();
-	std::vector<DescriptorLayout> descriptorLayouts = { this->sceneDescriptors->layout, descriptorSetLayouts.node, descriptorSetLayouts.material, descriptorSetLayouts.model };
+	std::vector<DescriptorLayout> descriptorLayouts = { this->renderInheritanceData->sceneDescriptors.layout, descriptorSetLayouts.node, descriptorSetLayouts.material, descriptorSetLayouts.model };
 	VkVertexInputBindingDescription vertexBindingDescriptions = Vertex::getBindingDescriptions();
 	std::array<VkVertexInputAttributeDescription, 3> vertexAttributeDescriptions = Vertex::getAttributeDescriptions();
 	PipelineInfo pipelineInfo = {};
@@ -181,7 +182,7 @@ void ym::ModelRenderer::drawNode(uint32_t imageIndex, VkDescriptorSet instanceDe
 			commandBuffer->cmdPushConstants(pipeline, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Material::PushData), &pushData);
 
 			std::vector<VkDescriptorSet> sets = { 
-				this->sceneDescriptors->sets[imageIndex],
+				this->renderInheritanceData->sceneDescriptors.sets[imageIndex],
 				node.descriptorSets[imageIndex], 
 				primitive.material->descriptorSets[imageIndex],
 				instanceDescriptorSet

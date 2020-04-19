@@ -12,7 +12,7 @@
 #include "Engine/Core/Vulkan/Buffers/UniformBuffer.h"
 #include "Engine/Core/Vulkan/Buffers/StorageBuffer.h"
 #include "Engine/Core/Camera.h"
-#include "Engine/Core/Graphics/SceneData.h"
+#include "Engine/Core/Graphics/RenderInheritanceData.h"
 
 namespace ym
 {
@@ -22,7 +22,7 @@ namespace ym
 		ModelRenderer();
 		virtual ~ModelRenderer();
 
-		void init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass, SceneDescriptors* sceneDescriptors);
+		void init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass, RenderInheritanceData* renderInheritanceData);
 		void destroy();
 
 		/*
@@ -85,7 +85,7 @@ namespace ym
 			DescriptorLayout node;		// Holds local node transformations. (This will be the same for every instance of the same model)
 			DescriptorLayout material;	// Holds data of a specific material.
 		} descriptorSetLayouts;
-		SceneDescriptors* sceneDescriptors;
+		RenderInheritanceData* renderInheritanceData;
 
 		// Thread data
 		std::vector<CommandBuffer*> commandBuffers;

@@ -28,12 +28,12 @@ void ym::Renderer::init()
 	createRenderPass();
 	createFramebuffers(this->depthTexture->imageView.getImageView());
 
-	setupSceneDescriptors();
+	initInheritenceData();
 
 	// Each renderer has a corresponding thread.
-	this->modelRenderer.init(&this->swapChain, (uint32_t)ERendererType::RENDER_TYPE_MODEL, &this->renderPass, &this->sceneDescriptors); // Uses thread 0.
+	this->modelRenderer.init(&this->swapChain, (uint32_t)ERendererType::RENDER_TYPE_MODEL, &this->renderPass, &this->renderInheritanceData); // Uses thread 0.
 
-	this->terrainRenderer.init(&this->swapChain, (uint32_t)ERendererType::RENDER_TYPE_TERRAIN, &this->renderPass, &this->sceneDescriptors); // Uses thread 1.
+	//this->terrainRenderer.init(&this->swapChain, (uint32_t)ERendererType::RENDER_TYPE_TERRAIN, &this->renderPass, &this->sceneDescriptors); // Uses thread 1.
 
 	GLTFLoader::init();
 
@@ -42,7 +42,7 @@ void ym::Renderer::init()
 	CommandPool& graphicsPool = LayerManager::get()->getCommandPools()->graphicsPool;
 	this->primaryCommandBuffersGraphics = graphicsPool.createCommandBuffers(this->swapChain.getNumImages(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 	CommandPool& computePool = LayerManager::get()->getCommandPools()->computePool;
-	this->primaryCommandBuffersCompute = computePool.createCommandBuffers(this->swapChain.getNumImages(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	//this->primaryCommandBuffersCompute = computePool.createCommandBuffers(this->swapChain.getNumImages(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 }
 
 void ym::Renderer::preDestroy()
@@ -57,13 +57,14 @@ void ym::Renderer::destroy()
 
 	// Destroy sub-renderers.
 	this->modelRenderer.destroy();
-	this->terrainRenderer.destroy();
+	//this->terrainRenderer.destroy();
 
 	// Destroy scene data.
 	for (UniformBuffer& ubo : this->sceneUBOs)
 		ubo.destroy();
-	this->sceneDescriptors.layout.destroy();
 	this->descriptorPool.destroy();
+
+	destroyInheritanceData();
 
 	// Destroy the rest.
 	this->renderPass.destroy();
@@ -77,7 +78,7 @@ void ym::Renderer::destroy()
 void ym::Renderer::setActiveCamera(Camera* camera)
 {
 	this->activeCamera = camera;
-	this->terrainRenderer.setActiveCamera(camera);
+	//this->terrainRenderer.setActiveCamera(camera);
 }
 
 bool ym::Renderer::begin()
@@ -112,7 +113,7 @@ bool ym::Renderer::begin()
 	this->inheritanceInfo.renderPass = this->renderPass.getRenderPass();
 
 	this->modelRenderer.begin(this->imageIndex, this->inheritanceInfo);
-	this->terrainRenderer.begin(this->imageIndex, this->inheritanceInfo);
+	//this->terrainRenderer.begin(this->imageIndex, this->inheritanceInfo);
 
 	return true;
 }
@@ -135,7 +136,8 @@ void ym::Renderer::drawModel(Model* model, const std::vector<glm::mat4>& transfo
 
 void ym::Renderer::drawTerrain(Terrain* terrain, const glm::mat4& transform)
 {
-	this->terrainRenderer.drawTerrain(this->imageIndex, terrain, transform);
+	YM_LOG_WARN("drawTerrain() is not implemented!");
+	//this->terrainRenderer.drawTerrain(this->imageIndex, terrain, transform);
 }
 
 bool ym::Renderer::end()
@@ -149,7 +151,7 @@ bool ym::Renderer::end()
 
 	// End renderers.
 	this->modelRenderer.end(this->imageIndex);
-	this->terrainRenderer.end(this->imageIndex);
+	//this->terrainRenderer.end(this->imageIndex);
 
 	// Submit all work.
 	submit();
@@ -234,7 +236,7 @@ void ym::Renderer::createSyncObjects()
 	this->framesInFlight = this->swapChain.getNumImages()-1;
 	this->imageAvailableSemaphores.resize(this->framesInFlight);
 	this->renderFinishedSemaphores.resize(this->framesInFlight);
-	this->computeSemaphores.resize(this->framesInFlight);
+	//this->computeSemaphores.resize(this->framesInFlight);
 	this->inFlightFences.resize(this->framesInFlight);
 	this->imagesInFlight.resize(this->swapChain.getNumImages(), VK_NULL_HANDLE);
 
@@ -247,7 +249,7 @@ void ym::Renderer::createSyncObjects()
 	for (uint32_t i = 0; i < this->framesInFlight; i++) {
 		VULKAN_CHECK(vkCreateSemaphore(VulkanInstance::get()->getLogicalDevice(), &SemaCreateInfo, nullptr, &this->imageAvailableSemaphores[i]), "Failed to create image available semaphores");
 		VULKAN_CHECK(vkCreateSemaphore(VulkanInstance::get()->getLogicalDevice(), &SemaCreateInfo, nullptr, &this->renderFinishedSemaphores[i]), "Failed to create render finished semaphores");
-		VULKAN_CHECK(vkCreateSemaphore(VulkanInstance::get()->getLogicalDevice(), &SemaCreateInfo, nullptr, &this->computeSemaphores[i]), "Failed to create compute semaphores");
+		//VULKAN_CHECK(vkCreateSemaphore(VulkanInstance::get()->getLogicalDevice(), &SemaCreateInfo, nullptr, &this->computeSemaphores[i]), "Failed to create compute semaphores");
 		VULKAN_CHECK(vkCreateFence(VulkanInstance::get()->getLogicalDevice(), &fenceCreateInfo, nullptr, &this->inFlightFences[i]), "Failed to create in flight fences");
 	}
 }
@@ -257,7 +259,7 @@ void ym::Renderer::destroySyncObjects()
 	for (uint32_t i = 0; i < this->framesInFlight; i++) {
 		vkDestroySemaphore(VulkanInstance::get()->getLogicalDevice(), this->imageAvailableSemaphores[i], nullptr);
 		vkDestroySemaphore(VulkanInstance::get()->getLogicalDevice(), this->renderFinishedSemaphores[i], nullptr);
-		vkDestroySemaphore(VulkanInstance::get()->getLogicalDevice(), this->computeSemaphores[i], nullptr);
+		//vkDestroySemaphore(VulkanInstance::get()->getLogicalDevice(), this->computeSemaphores[i], nullptr);
 		vkDestroyFence(VulkanInstance::get()->getLogicalDevice(), this->inFlightFences[i], nullptr);
 	}
 }
@@ -308,15 +310,15 @@ void ym::Renderer::submit()
 		std::vector<VkCommandBuffer> vkCommands;
 		std::vector<CommandBuffer*>& secondaryBuffers = this->modelRenderer.getBuffers();
 		vkCommands.push_back(secondaryBuffers[this->imageIndex]->getCommandBuffer());
-		std::vector<CommandBuffer*>& secondaryBuffers2 = this->terrainRenderer.getGraphicsBuffers();
-		vkCommands.push_back(secondaryBuffers2[this->imageIndex]->getCommandBuffer());
+		//std::vector<CommandBuffer*>& secondaryBuffers2 = this->terrainRenderer.getGraphicsBuffers();
+		//vkCommands.push_back(secondaryBuffers2[this->imageIndex]->getCommandBuffer());
 
 		// Record and execute them on the current primary command buffer.
 		CommandBuffer* buffer = this->primaryCommandBuffersGraphics[this->imageIndex];
 		{
 			buffer->begin(0, nullptr);
 
-			this->terrainRenderer.preRecordGraphics(this->imageIndex, buffer);
+			//this->terrainRenderer.preRecordGraphics(this->imageIndex, buffer);
 
 			std::vector<VkClearValue> clearValues = {};
 			VkClearValue value;
@@ -328,7 +330,7 @@ void ym::Renderer::submit()
 			buffer->cmdExecuteCommands((uint32_t)vkCommands.size(), vkCommands.data());
 			buffer->cmdEndRenderPass();
 
-			this->terrainRenderer.postRecordGraphics(this->imageIndex, buffer);
+			//this->terrainRenderer.postRecordGraphics(this->imageIndex, buffer);
 
 			buffer->end();
 		}
@@ -355,27 +357,48 @@ void ym::Renderer::submit()
 	}
 }
 
+void ym::Renderer::initInheritenceData()
+{
+	setupSceneDescriptors();
+
+	// Create separate command buffers for each thread.
+	this->renderInheritanceData.threadData.resize(ERendererType::RENDER_TYPE_SIZE);
+	for (uint32_t i = 0; i < this->renderInheritanceData.threadData.size(); i++)
+	{
+		ThreadData& td = this->renderInheritanceData.threadData[i];
+		td.init(i, &this->swapChain);
+	}
+}
+
+void ym::Renderer::destroyInheritanceData()
+{
+	this->renderInheritanceData.sceneDescriptors.layout.destroy();
+	// Destory thread dependent data
+	for (ThreadData& td : this->renderInheritanceData.threadData)
+		td.destory();
+}
+
 void ym::Renderer::setupSceneDescriptors()
 {
 	this->sceneUBOs.resize(this->swapChain.getNumImages());
 	for (auto& ubo : this->sceneUBOs)
 		ubo.init(sizeof(SceneData));
 
-	this->sceneDescriptors.layout.add(new UBO(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)); // Camera
-	this->sceneDescriptors.layout.init();
+	this->renderInheritanceData.sceneDescriptors.layout.add(new UBO(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)); // Camera
+	this->renderInheritanceData.sceneDescriptors.layout.init();
 
 	// There is only one scene at a time => one descriptor set.
-	this->descriptorPool.addDescriptorLayout(this->sceneDescriptors.layout, 1);
+	this->descriptorPool.addDescriptorLayout(this->renderInheritanceData.sceneDescriptors.layout, 1);
 
 	// The scene will be used in all frames => make copies of them.
 	uint32_t numFrames = this->swapChain.getNumImages();
 	descriptorPool.init(numFrames);
 
-	this->sceneDescriptors.sets.resize(this->swapChain.getNumImages(), VK_NULL_HANDLE);
+	this->renderInheritanceData.sceneDescriptors.sets.resize(this->swapChain.getNumImages(), VK_NULL_HANDLE);
 	for (uint32_t i = 0; i < this->swapChain.getNumImages(); i++)
 	{
 		DescriptorSet sceneSet;
-		sceneSet.init(this->sceneDescriptors.layout, &this->sceneDescriptors.sets[i], &this->descriptorPool);
+		sceneSet.init(this->renderInheritanceData.sceneDescriptors.layout, &this->renderInheritanceData.sceneDescriptors.sets[i], &this->descriptorPool);
 		sceneSet.setBufferDesc(0, this->sceneUBOs[i].getDescriptor());
 		sceneSet.update();
 	}

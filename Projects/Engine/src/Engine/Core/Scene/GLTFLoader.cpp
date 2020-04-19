@@ -201,6 +201,7 @@ namespace ym
 		transferCommandPool->endSingleTimeCommand(cbuff);
 
 		model->hasLoaded = true;
+		YM_LOG_INFO("Transfered model to GPU.");
 	}
 
 	void GLTFLoader::initDefaultData(CommandPool* transferCommandPool)
@@ -232,8 +233,8 @@ namespace ym
 
 	void GLTFLoader::loadTextures(std::string & folderPath, Model & model, tinygltf::Model & gltfModel, StagingBuffers * stagingBuffers)
 	{
-		YM_LOG_INFO("Textures:");
-		if (gltfModel.textures.empty()) YM_LOG_INFO(" ->No textures");
+		//YM_LOG_INFO("Textures:");
+		if (gltfModel.textures.empty()) YM_LOG_INFO("  No textures");
 		else model.hasImageMemory = true;
 
 		model.imageData.resize(gltfModel.textures.size());
@@ -243,7 +244,7 @@ namespace ym
 		{
 			tinygltf::Texture& textureGltf = gltfModel.textures[textureIndex];
 			tinygltf::Image& image = gltfModel.images[textureGltf.source];
-			YM_LOG_INFO(" ->[{0}] name: {1} uri: {2} bits: {3} comp: {4} w: {5} h: {6}", textureIndex, textureGltf.name.c_str(), image.uri.c_str(), image.bits, image.component, image.width, image.height);
+			//YM_LOG_INFO(" ->[{0}] name: {1} uri: {2} bits: {3} comp: {4} w: {5} h: {6}", textureIndex, textureGltf.name.c_str(), image.uri.c_str(), image.bits, image.component, image.width, image.height);
 
 			loadImageData(folderPath, image, gltfModel, model.imageData[textureIndex]);
 
@@ -267,19 +268,21 @@ namespace ym
 			textureSize += texture.textureDesc.width * texture.textureDesc.height * 4;
 		stagingBuffers->imageBuffer.init(textureSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, { VulkanInstance::get()->getGraphicsQueue().queueIndex });
 		stagingBuffers->imageMemory.bindBuffer(&stagingBuffers->imageBuffer);
+		YM_LOG_INFO("  Loaded {} texture(s).", gltfModel.textures.size());
 
 		// TODO: Load all samplers into memory and index them when needed.
-		YM_LOG_INFO("Samplers:");
-		if (gltfModel.samplers.empty()) YM_LOG_INFO(" ->No samplers");
+		//YM_LOG_INFO("Samplers:");
+		//if (gltfModel.samplers.empty()) YM_LOG_INFO(" ->No samplers");
 		model.samplers.resize(gltfModel.samplers.size());
 		for (size_t samplerIndex = 0; samplerIndex < gltfModel.samplers.size(); samplerIndex++)
 		{
 			tinygltf::Sampler& samplerGltf = gltfModel.samplers[samplerIndex];
-			YM_LOG_INFO(" ->[{0}] name: {1} magFilter: {2}, minFilter: {3}", samplerIndex, samplerGltf.name.c_str(), samplerGltf.magFilter, samplerGltf.minFilter);
+			//YM_LOG_INFO(" ->[{0}] name: {1} magFilter: {2}, minFilter: {3}", samplerIndex, samplerGltf.name.c_str(), samplerGltf.magFilter, samplerGltf.minFilter);
 
 			Sampler& sampler = model.samplers[samplerIndex];
 			loadSamplerData(samplerGltf, sampler);
 		}
+		YM_LOG_INFO("  Loaded {} sampler(s).", gltfModel.samplers.size());
 	}
 
 	void GLTFLoader::loadImageData(std::string & folderPath, tinygltf::Image & image, tinygltf::Model & gltfModel, std::vector<uint8_t> & data)
@@ -294,14 +297,14 @@ namespace ym
 			std::string path = folderPath + image.uri;
 			uint8_t* imgData = static_cast<uint8_t*>(stbi_load(path.c_str(), &width, &height, &channels, numComponents));
 			if (imgData == nullptr)
-				YM_LOG_ERROR("Failed to load texture! could not find file, path: {}", path.c_str());
+				YM_LOG_ERROR("  Failed to load texture! could not find file, path: {}", path.c_str());
 			else {
 				if (width == image.width && height == image.height && image.bits == 8)
 				{
-					YM_LOG_INFO("Loaded texture: {} successfully!", path.c_str());
+					YM_LOG_INFO("  Loaded texture: {} successfully!", path.c_str());
 					data.insert(data.end(), imgData, imgData + size);
 				}
-				else YM_LOG_ERROR("Failed to load texture! Dimension or bit-depth do not match the specified values! Path: {}", path.c_str());
+				else YM_LOG_ERROR("  Failed to load texture! Dimension or bit-depth do not match the specified values! Path: {}", path.c_str());
 				delete[] imgData;
 			}
 		}
@@ -316,14 +319,14 @@ namespace ym
 			int channels;
 			uint8_t* imgData = static_cast<uint8_t*>(stbi_load_from_memory(dataPtr, (int)view.byteLength, &width, &height, &channels, numComponents));
 			if (imgData == nullptr)
-				YM_LOG_ERROR("Failed to load embedded texture! could not find file!");
+				YM_LOG_ERROR("  Failed to load embedded texture! could not find file!");
 			else {
 				if (width == image.width && height == image.height && image.bits == 8)
 				{
-					YM_LOG_INFO("Loaded embedded texture successfully!");
+					YM_LOG_INFO("  Loaded embedded texture successfully!");
 					data.insert(data.end(), imgData, imgData + size);
 				}
-				else YM_LOG_ERROR("Failed to load embedded texture! Dimension or bit-depth do not match the specified values!");
+				else YM_LOG_ERROR("  Failed to load embedded texture! Dimension or bit-depth do not match the specified values!");
 				delete[] imgData;
 			}
 		}
@@ -387,31 +390,31 @@ namespace ym
 	void GLTFLoader::loadMaterials(Model & model, tinygltf::Model & gltfModel)
 	{
 		// TODO: Load all materials into memory and index them when needed.
-		YM_LOG_INFO("Materials:");
-		if (gltfModel.materials.empty()) YM_LOG_INFO(" ->No materials");
+		//YM_LOG_INFO("Materials:");
+		if (gltfModel.materials.empty()) YM_LOG_INFO("  No materials");
 		else model.hasMaterialMemory = true;
 
 		model.materials.resize(gltfModel.materials.size());
 		for (size_t materialIndex = 0; materialIndex < gltfModel.materials.size(); materialIndex++)
 		{
 			tinygltf::Material& materialGltf = gltfModel.materials[materialIndex];
-			YM_LOG_INFO(" ->[{0}] name: {1}", materialIndex, materialGltf.name.c_str());
+			//YM_LOG_INFO(" ->[{0}] name: {1}", materialIndex, materialGltf.name.c_str());
 			tinygltf::PbrMetallicRoughness& pbrMR = materialGltf.pbrMetallicRoughness;
-			YM_LOG_INFO("    ->[PbrMetallicRoughness]");
-			YM_LOG_INFO("        ->metallicFactor: {}, roughnessFactor: {}", pbrMR.metallicFactor, pbrMR.roughnessFactor);
+			//YM_LOG_INFO("    ->[PbrMetallicRoughness]");
+			//YM_LOG_INFO("        ->metallicFactor: {}, roughnessFactor: {}", pbrMR.metallicFactor, pbrMR.roughnessFactor);
 			tinygltf::TextureInfo& baseColorTexture = pbrMR.baseColorTexture;
-			YM_LOG_INFO("        ->[BaseColorTexture] index: {}, texCoord: {}", baseColorTexture.index, baseColorTexture.texCoord);
+			//YM_LOG_INFO("        ->[BaseColorTexture] index: {}, texCoord: {}", baseColorTexture.index, baseColorTexture.texCoord);
 			tinygltf::TextureInfo& metallicRoughnessTexture = pbrMR.metallicRoughnessTexture;
-			YM_LOG_INFO("        ->[MetallicRoughnessTexture] index: {}, texCoord: {}", metallicRoughnessTexture.index, metallicRoughnessTexture.texCoord);
-			YM_LOG_INFO("        ->[BaseColorFactor] value: ({}, {}, {}, {})", pbrMR.baseColorFactor[0], pbrMR.baseColorFactor[1], pbrMR.baseColorFactor[2], pbrMR.baseColorFactor[3]);
+			//YM_LOG_INFO("        ->[MetallicRoughnessTexture] index: {}, texCoord: {}", metallicRoughnessTexture.index, metallicRoughnessTexture.texCoord);
+			//YM_LOG_INFO("        ->[BaseColorFactor] value: ({}, {}, {}, {})", pbrMR.baseColorFactor[0], pbrMR.baseColorFactor[1], pbrMR.baseColorFactor[2], pbrMR.baseColorFactor[3]);
 
 			tinygltf::NormalTextureInfo& normalTexture = materialGltf.normalTexture;
-			YM_LOG_INFO("    ->[NormalTextureInfo] index: {}, texCoord: {}, scale: {}", normalTexture.index, normalTexture.texCoord, normalTexture.scale);
+			//YM_LOG_INFO("    ->[NormalTextureInfo] index: {}, texCoord: {}, scale: {}", normalTexture.index, normalTexture.texCoord, normalTexture.scale);
 			tinygltf::OcclusionTextureInfo occlusionTexture = materialGltf.occlusionTexture;
-			YM_LOG_INFO("    ->[OcclusionTextureInfo] index: {}, texCoord: {}, strength: {}", occlusionTexture.index, occlusionTexture.texCoord, occlusionTexture.strength);
+			//YM_LOG_INFO("    ->[OcclusionTextureInfo] index: {}, texCoord: {}, strength: {}", occlusionTexture.index, occlusionTexture.texCoord, occlusionTexture.strength);
 			tinygltf::TextureInfo emissiveTexture = materialGltf.emissiveTexture;
-			YM_LOG_INFO("    ->[EmissiveTexture] index: {}, texCoord: {}", emissiveTexture.index, emissiveTexture.texCoord);
-			YM_LOG_INFO("    ->[EmissiveFactor] value: ({}, {}, {})", materialGltf.emissiveFactor[0], materialGltf.emissiveFactor[1], materialGltf.emissiveFactor[2]);
+			//YM_LOG_INFO("    ->[EmissiveTexture] index: {}, texCoord: {}", emissiveTexture.index, emissiveTexture.texCoord);
+			//YM_LOG_INFO("    ->[EmissiveFactor] value: ({}, {}, {})", materialGltf.emissiveFactor[0], materialGltf.emissiveFactor[1], materialGltf.emissiveFactor[2]);
 
 			// Construct material structure.
 			Material& material = model.materials[materialIndex];
@@ -441,7 +444,7 @@ namespace ym
 			};
 
 			auto getTeCoord = [&](int index, int texCoord)->int {
-				if (texCoord == 1 && index != -1) YM_LOG_WARN("Texture coordinate 1 is not supported!");
+				if (texCoord == 1 && index != -1) YM_LOG_WARN("  Texture coordinate 1 is not supported!");
 				return index != -1 ? texCoord : -1;
 			};
 
@@ -462,6 +465,7 @@ namespace ym
 			material.pushData.normalTextureCoord = getTeCoord(normalTexture.index, normalTexture.texCoord);
 			material.pushData.occlusionTextureCoord = getTeCoord(occlusionTexture.index, occlusionTexture.texCoord);
 		}
+		YM_LOG_INFO("  Loaded {} material(s).", gltfModel.materials.size());
 	}
 
 	void GLTFLoader::loadNode(Model & model, Model::Node * node, tinygltf::Model & gltfModel, tinygltf::Node & gltfNode, std::string indents)
@@ -624,6 +628,7 @@ namespace ym
 
 	void GLTFLoader::loadModel(Model & model, const std::string & filePath, StagingBuffers * stagingBuffers)
 	{
+		YM_LOG_INFO("Loading model... [{}]", filePath.c_str());
 		tinygltf::Model gltfModel;
 		bool ret = false;
 		size_t pos = filePath.rfind('.');
@@ -638,11 +643,11 @@ namespace ym
 			else if (prefix == ".glb")
 				ret = loader.LoadBinaryFromFile(&gltfModel, &err, &warn, filePath); // for binary glTF(.glb)
 
-			if (!warn.empty()) YM_LOG_WARN("GLTF Waring: {0}", warn.c_str());
-			if (!err.empty()) YM_LOG_ERROR("GLTF Error: {0}", err.c_str());
+			if (!warn.empty()) YM_LOG_WARN("  GLTF Waring: {0}", warn.c_str());
+			if (!err.empty()) YM_LOG_ERROR("  GLTF Error: {0}", err.c_str());
 		}
 
-		YM_ASSERT(ret, "Failed to parse glTF\n");
+		YM_ASSERT(ret, "  Failed to parse glTF\n");
 
 		pos = filePath.find_last_of("/\\");
 		std::string folderPath = filePath.substr(0, pos + 1);
@@ -650,6 +655,7 @@ namespace ym
 		loadTextures(folderPath, model, gltfModel, stagingBuffers);
 		loadMaterials(model, gltfModel);
 		loadScenes(model, gltfModel, stagingBuffers);
+		YM_LOG_INFO("  Loaded model! [{}]", filePath.c_str());
 	}
 
 	void GLTFLoader::loadScenes(Model & model, tinygltf::Model & gltfModel, StagingBuffers * stagingBuffers)
@@ -675,5 +681,7 @@ namespace ym
 
 		stagingBuffers->geometryBuffer.init(verticesSize + indicesSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, queueIndices);
 		stagingBuffers->geometryMemory.bindBuffer(&stagingBuffers->geometryBuffer);
+
+		YM_LOG_INFO("  Loaded scene nodes!");
 	}
 }
