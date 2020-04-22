@@ -6,6 +6,7 @@
 #include "Engine/Core/Graphics/Renderer.h"
 #include "Engine/Core/Display/Display.h"
 #include "Engine/Core/Input/Input.h"
+#include "Engine/Core/Audio/AudioSystem.h"
 
 void SandboxLayer::onStart(ym::Renderer* renderer)
 {
@@ -36,6 +37,9 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	this->camera.init(aspect, 45.f, { 0.f, 2, 0.f }, { 0.f, 2, 1.f }, 1.0f, 10.0f);
 
 	renderer->setActiveCamera(&this->camera);
+
+	this->cameraLockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOff.mp3");
+	this->cameraUnlockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOn.mp3");
 }
 
 void SandboxLayer::onUpdate(float dt)
@@ -51,8 +55,13 @@ void SandboxLayer::onUpdate(float dt)
 		{
 			input->centerMouse();
 			input->lockMouse();
+			this->cameraLockSound->play();
 		}
-		else input->unlockMouse();
+		else
+		{
+			input->unlockMouse();
+			this->cameraUnlockSound->play();
+		}
 	}
 
 	if (lock)

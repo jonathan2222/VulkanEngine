@@ -5,6 +5,7 @@
 #include "../Input/Input.h"
 #include "LayerManager.h"
 #include "../Threading/ThreadManager.h"
+#include "Engine/Core/Audio/AudioSystem.h"
 
 #include "Utils/Timer.h"
 
@@ -20,6 +21,8 @@ ym::App::App()
 	
 	DisplayDesc displayDesc;
 	displayDesc.init();
+
+	AudioSystem::get()->init();
 
 	API* api = API::get();
 	api->init();
@@ -58,6 +61,7 @@ ym::App::~App()
 	this->vulkanInstance->destroy();
 	Display::get()->destroy();
 	API::get()->destroy();
+	AudioSystem::get()->destory();
 
 	YM_PROFILER_END_SESSION();
 }
@@ -104,8 +108,8 @@ void ym::App::run()
 			YM_PROFILER_RENDERING_SCOPE("Update");
 			// Update the active layer
 			this->layerManager->onUpdate(dt);
+			AudioSystem::get()->update();
 		}
-
 		// Render
 		{
 			YM_PROFILER_RENDERING_SCOPE("Render");

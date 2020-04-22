@@ -99,6 +99,25 @@ end
 
 -- ==============================================================================================
 
+-- =========================================== FMOD ===========================================
+
+function includeFMOD()
+	includedirs { "Externals/FMOD/Include" }
+end
+
+function linkFMOD()
+	libdirs "Externals/FMOD/Lib/%{cfg.buildcfg}"
+	filter "configurations:Debug"
+		links { "fmodL_vc" }
+
+	filter "configurations:Release"
+		links { "fmod_vc" }
+	
+	filter {}
+end
+
+-- ==============================================================================================
+
 -- =========================================== SPDLOG ===========================================
 
 function includeGLM()
@@ -120,14 +139,19 @@ end
 function useEngine()
 	includedirs { "Projects/Engine/src" }
 	links "Engine"
-
+	
 	includeGLM()
 	includeGLFW()
 	linkGLFW()
+	
 	includeVulkan()
 	linkVulkan()
+	
 	includeSpdlog()
 	includeGLTF()
+	
+	includeFMOD()
+	linkFMOD()
 end
 
 -- ==============================================================================================
@@ -165,7 +189,6 @@ project "Engine"
 	includeVulkan()
 	includeGLM()
 	includeGLTF()
+	includeFMOD()
 
 	useSpdlog()
-
-	

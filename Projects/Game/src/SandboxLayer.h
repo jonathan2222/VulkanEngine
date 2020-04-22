@@ -4,6 +4,7 @@
 #include "Engine/Core/Scene/Model/Model.h"
 #include "Engine/Core/Scene/Terrain/Terrain.h"
 #include "Engine/Core/Camera.h"
+#include "Engine/Core/Audio/Sound.h"
 
 class SandboxLayer : public ym::Layer
 {
@@ -22,4 +23,7 @@ private:
 	ym::Model sponzaModel;
 	ym::Terrain terrain;
 	ym::Camera camera;
+
+	ym::Sound* cameraLockSound;
+	ym::Sound* cameraUnlockSound;
 };
