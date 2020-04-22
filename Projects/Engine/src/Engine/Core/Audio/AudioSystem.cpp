@@ -41,6 +41,14 @@ void ym::AudioSystem::destory()
 	}
 	this->sounds.clear();
 
+	// Remove all soundStreams create by the system.
+	for (Sound*& stream : this->soundStreams)
+	{
+		stream->destory();
+		delete stream;
+	}
+	this->soundStreams.clear();
+
 	FMOD_CHECK(this->system->close(), "Could not close FMOD system!");
 	FMOD_CHECK(this->system->release(), "Could not release FMOD system!");
 
@@ -57,6 +65,7 @@ ym::Sound* ym::AudioSystem::createSound(const std::string& filePath)
 	Sound* sound = new Sound(this->system);
 	FMOD_CHECK(this->system->createSound(filePath.c_str(), FMOD_DEFAULT, 0, &sound->sound), "Failed to create sound {}!", filePath.c_str());
 	FMOD_CHECK(sound->sound->setMode(FMOD_LOOP_OFF), "Failed to set sound mode for sound {}!", filePath.c_str());
+	sound->init();
 	this->sounds.push_back(sound);
 	return sound;
 }
@@ -66,4 +75,21 @@ void ym::AudioSystem::removeSound(Sound* sound)
 	sound->destory();
 	std::remove(this->sounds.begin(), this->sounds.end(), sound);
 	delete sound;
+}
+
+ym::Sound* ym::AudioSystem::createStream(const std::string& filePath)
+{
+	Sound* stream = new Sound(this->system);
+	FMOD_CHECK(this->system->createStream(filePath.c_str(), FMOD_DEFAULT, nullptr, &stream->sound), "Failed to create sound stream {}!", filePath.c_str());
+	FMOD_CHECK(stream->sound->setMode(FMOD_LOOP_NORMAL), "Failed to set sound mode for sound stream {}!", filePath.c_str());
+	stream->init();
+	this->soundStreams.push_back(stream);
+	return stream;
+}
+
+void ym::AudioSystem::removeStream(Sound* soundStream)
+{
+	soundStream->destory();
+	std::remove(this->soundStreams.begin(), this->soundStreams.end(), soundStream);
+	delete soundStream;
 }

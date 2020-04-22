@@ -40,6 +40,11 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 
 	this->cameraLockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOff.mp3");
 	this->cameraUnlockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOn.mp3");
+	this->ambientSound = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Ambient/Rainforest.mp3");
+	this->music = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Music/DunnoJBPet.mp3");
+
+	this->ambientSound->play();
+	this->ambientSound->setVolume(0.3f);
 }
 
 void SandboxLayer::onUpdate(float dt)
@@ -73,6 +78,35 @@ void SandboxLayer::onUpdate(float dt)
 	// Quit if ESCAPE is pressed.
 	if (input->isKeyPressed(ym::Key::ESCAPE))
 		this->terminate();
+
+	if (input->getKeyState(ym::Key::KP_1) == ym::KeyState::FIRST_PRESSED)
+	{
+		this->music->play();
+		YM_LOG_INFO("Play sound");
+	}
+
+	if (input->getKeyState(ym::Key::KP_2) == ym::KeyState::FIRST_PRESSED)
+	{
+		this->music->pause();
+		YM_LOG_INFO("Pause sound");
+	}
+
+	if (input->getKeyState(ym::Key::KP_3) == ym::KeyState::FIRST_PRESSED)
+	{
+		this->music->stop();
+		YM_LOG_INFO("Stop sound");
+	}
+
+	if (input->getKeyState(ym::Key::KP_ADD) == ym::KeyState::FIRST_PRESSED)
+	{
+		this->music->applyVolume(0.25f);
+		YM_LOG_INFO("Changed volume to {}", this->music->getVolume());
+	}
+	if (input->getKeyState(ym::Key::KP_SUBTRACT) == ym::KeyState::FIRST_PRESSED)
+	{
+		this->music->applyVolume(-0.25f);
+		YM_LOG_INFO("Changed volume to {}", this->music->getVolume());
+	}
 }
 
 void SandboxLayer::onRender(ym::Renderer* renderer)

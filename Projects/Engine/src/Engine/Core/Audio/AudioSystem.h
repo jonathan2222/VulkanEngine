@@ -21,10 +21,14 @@ namespace ym
 		Sound* createSound(const std::string& filePath);
 		void removeSound(Sound* sound);
 
+		Sound* createStream(const std::string& filePath);
+		void removeStream(Sound* soundStream);
+
 	private:
 		FMOD::System* system;
 		uint32_t version;
 
 		std::vector<Sound*> sounds;
+		std::vector<Sound*> soundStreams;
 	};
 }

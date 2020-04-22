@@ -26,4 +26,6 @@ private:
 
 	ym::Sound* cameraLockSound;
 	ym::Sound* cameraUnlockSound;
+	ym::Sound* ambientSound;
+	ym::Sound* music;
 };

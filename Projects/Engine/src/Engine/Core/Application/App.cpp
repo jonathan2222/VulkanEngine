@@ -89,12 +89,12 @@ void ym::App::run()
 	{
 		// Begin rendering profiling.
 #ifdef YM_DEBUG
-		if (ym::Input::get()->isKeyPressed(ym::Key::P))
+		/*if (ym::Input::get()->isKeyPressed(ym::Key::P))
 		{
 			if(ym::Instrumentation::g_runRenderingProfiling == false)
 				renderingProfilingFrameCounter = 0;
 			YM_PROFILER_RENDERING_BEGIN_SESSION("Rendering", "CPU_Profiler_Rendering.json");
-		}
+		}*/
 #endif
 
 		// Frame
