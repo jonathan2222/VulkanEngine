@@ -4,7 +4,9 @@
 #include "Engine/Core/Scene/Model/Model.h"
 #include "Engine/Core/Scene/Terrain/Terrain.h"
 #include "Engine/Core/Camera.h"
+
 #include "Engine/Core/Audio/Sound.h"
+#include "Engine/Core/Audio/ChannelGroup.h"
 
 class SandboxLayer : public ym::Layer
 {
@@ -28,4 +30,5 @@ private:
 	ym::Sound* cameraUnlockSound;
 	ym::Sound* ambientSound;
 	ym::Sound* music;
+	ym::ChannelGroup* channelGroup;
 };

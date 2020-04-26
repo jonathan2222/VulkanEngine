@@ -4,6 +4,7 @@
 
 namespace ym
 {
+	class ChannelGroup;
 	class Sound
 	{
 	public:
@@ -11,12 +12,14 @@ namespace ym
 		~Sound();
 
 		void init();
-		void destory();
+		void destroy();
 
 		void play();
 		void pause();
 		void unpause();
 		void stop();
+
+		void setChannelGroup(ChannelGroup* channelGroup);
 
 		float getVolume() const;
 		void applyVolume(float volumeChange);
@@ -26,7 +29,7 @@ namespace ym
 		friend class AudioSystem;
 	private:
 		bool isCreated() const;
-		bool isChannelCreate() const;
+		bool isChannelValid();
 
 	private:
 		FMOD::Sound* sound;

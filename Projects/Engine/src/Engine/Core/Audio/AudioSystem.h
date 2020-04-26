@@ -5,6 +5,7 @@
 namespace ym
 {
 	class Sound;
+	class ChannelGroup;
 	class AudioSystem
 	{
 	public:
@@ -14,7 +15,7 @@ namespace ym
 		static AudioSystem* get();
 
 		void init();
-		void destory();
+		void destroy();
 
 		void update();
 
@@ -24,11 +25,14 @@ namespace ym
 		Sound* createStream(const std::string& filePath);
 		void removeStream(Sound* soundStream);
 
+		ChannelGroup* createChannelGroup(const std::string& name);
+
 	private:
 		FMOD::System* system;
 		uint32_t version;
 
 		std::vector<Sound*> sounds;
 		std::vector<Sound*> soundStreams;
+		std::vector<ChannelGroup*> channelGroups;
 	};
 }

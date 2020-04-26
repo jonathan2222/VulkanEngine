@@ -3,13 +3,15 @@
 
 #include <FMOD/fmod_errors.h>
 
+#include "ChannelGroup.h"
+
 ym::Sound::Sound(FMOD::System* systemPtr) : sound(nullptr), channel(nullptr), systemPtr(systemPtr), volume(0.0f)
 {
 }
 
 ym::Sound::~Sound()
 {
-	destory();
+	destroy();
 }
 
 void ym::Sound::init()
@@ -17,7 +19,7 @@ void ym::Sound::init()
 	
 }
 
-void ym::Sound::destory()
+void ym::Sound::destroy()
 {
 	if (isCreated())
 	{
@@ -30,18 +32,13 @@ void ym::Sound::destory()
 
 void ym::Sound::play()
 {
-	if (isChannelCreate())
-		unpause();
-	else
-	{
-		FMOD_CHECK(this->systemPtr->playSound(this->sound, 0, false, &this->channel), "Failed to play sound!");
-		FMOD_CHECK(this->channel->getVolume(&this->volume), "Failed to get sound volume!");
-	}
+	FMOD_CHECK(this->systemPtr->playSound(this->sound, 0, false, &this->channel), "Failed to play sound!");
+	FMOD_CHECK(this->channel->getVolume(&this->volume), "Failed to get sound volume!");
 }
 
 void ym::Sound::pause()
 {
-	if (isChannelCreate())
+	if (isChannelValid())
 	{
 		FMOD_CHECK(this->channel->setPaused(true), "Failed to pause sound!");
 	}
@@ -49,7 +46,7 @@ void ym::Sound::pause()
 
 void ym::Sound::unpause()
 {
-	if (isChannelCreate())
+	if (isChannelValid())
 	{
 		FMOD_CHECK(this->channel->setPaused(false), "Failed to unpause sound!");
 	}
@@ -57,9 +54,18 @@ void ym::Sound::unpause()
 
 void ym::Sound::stop()
 {
-	if (isChannelCreate())
+	if (isChannelValid())
 	{
 		FMOD_CHECK(this->channel->stop(), "Failed to stop sound!");
+		this->channel = nullptr;
+	}
+}
+
+void ym::Sound::setChannelGroup(ChannelGroup* channelGroup)
+{
+	if (isChannelValid())
+	{
+		FMOD_CHECK(this->channel->setChannelGroup(channelGroup->channelGroup), "Failed to set channel group \"{}\" to sound!", channelGroup->name.c_str());
 	}
 }
 
@@ -76,9 +82,9 @@ void ym::Sound::applyVolume(float volumeChange)
 
 void ym::Sound::setVolume(float volume)
 {
-	if (isChannelCreate())
+	this->volume = volume;
+	if (isChannelValid())
 	{
-		this->volume = volume;
 		FMOD_CHECK(this->channel->setVolume(volume), "Failed to set sound volume!");
 	}
 }
@@ -100,7 +106,16 @@ bool ym::Sound::isCreated() const
 	return this->sound != nullptr;
 }
 
-bool ym::Sound::isChannelCreate() const
+bool ym::Sound::isChannelValid()
 {
-	return this->channel != nullptr;
+	// Use the isPlaying function to check if the channel handel is invalid or not.
+	if (this->channel != nullptr)
+	{
+		bool isPlaying;
+		FMOD_RESULT result = this->channel->isPlaying(&isPlaying);
+		if (result == FMOD_ERR_INVALID_HANDLE) this->channel = nullptr;
+		return this->channel != nullptr;
+	}
+	else
+		return this->channel != nullptr;
 }

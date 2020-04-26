@@ -42,9 +42,11 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	this->cameraUnlockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOn.mp3");
 	this->ambientSound = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Ambient/Rainforest.mp3");
 	this->music = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Music/DunnoJBPet.mp3");
+	
+	this->channelGroup = ym::AudioSystem::get()->createChannelGroup("Group A");
 
 	this->ambientSound->play();
-	this->ambientSound->setVolume(0.3f);
+	this->ambientSound->setVolume(0.2f);
 }
 
 void SandboxLayer::onUpdate(float dt)
@@ -82,6 +84,7 @@ void SandboxLayer::onUpdate(float dt)
 	if (input->getKeyState(ym::Key::KP_1) == ym::KeyState::FIRST_PRESSED)
 	{
 		this->music->play();
+		this->music->setVolume(0.2f);
 		YM_LOG_INFO("Play sound");
 	}
 
@@ -102,6 +105,7 @@ void SandboxLayer::onUpdate(float dt)
 		this->music->applyVolume(0.25f);
 		YM_LOG_INFO("Changed volume to {}", this->music->getVolume());
 	}
+
 	if (input->getKeyState(ym::Key::KP_SUBTRACT) == ym::KeyState::FIRST_PRESSED)
 	{
 		this->music->applyVolume(-0.25f);

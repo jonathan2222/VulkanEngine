@@ -61,7 +61,7 @@ ym::App::~App()
 	this->vulkanInstance->destroy();
 	Display::get()->destroy();
 	API::get()->destroy();
-	AudioSystem::get()->destory();
+	AudioSystem::get()->destroy();
 
 	YM_PROFILER_END_SESSION();
 }

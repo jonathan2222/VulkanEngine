@@ -3,6 +3,7 @@
 
 #include <FMOD/fmod_errors.h>
 #include "Sound.h"
+#include "ChannelGroup.h"
 
 ym::AudioSystem::AudioSystem() : system(nullptr)
 {
@@ -31,12 +32,12 @@ void ym::AudioSystem::init()
 	YM_LOG_INFO("Initialized audio system with max {} channels.", maxChannels);
 }
 
-void ym::AudioSystem::destory()
+void ym::AudioSystem::destroy()
 {
 	// Remove all sounds create by the system.
 	for (Sound*& sound : this->sounds)
 	{
-		sound->destory();
+		sound->destroy();
 		delete sound;
 	}
 	this->sounds.clear();
@@ -44,10 +45,18 @@ void ym::AudioSystem::destory()
 	// Remove all soundStreams create by the system.
 	for (Sound*& stream : this->soundStreams)
 	{
-		stream->destory();
+		stream->destroy();
 		delete stream;
 	}
 	this->soundStreams.clear();
+
+	// Remove all channel groups created by the system.
+	for (ChannelGroup*& channelGroup : this->channelGroups)
+	{
+		channelGroup->destroy();
+		delete channelGroup;
+	}
+	this->channelGroups.clear();
 
 	FMOD_CHECK(this->system->close(), "Could not close FMOD system!");
 	FMOD_CHECK(this->system->release(), "Could not release FMOD system!");
@@ -72,7 +81,7 @@ ym::Sound* ym::AudioSystem::createSound(const std::string& filePath)
 
 void ym::AudioSystem::removeSound(Sound* sound)
 {
-	sound->destory();
+	sound->destroy();
 	std::remove(this->sounds.begin(), this->sounds.end(), sound);
 	delete sound;
 }
@@ -89,7 +98,15 @@ ym::Sound* ym::AudioSystem::createStream(const std::string& filePath)
 
 void ym::AudioSystem::removeStream(Sound* soundStream)
 {
-	soundStream->destory();
+	soundStream->destroy();
 	std::remove(this->soundStreams.begin(), this->soundStreams.end(), soundStream);
 	delete soundStream;
+}
+
+ym::ChannelGroup* ym::AudioSystem::createChannelGroup(const std::string& name)
+{
+	ChannelGroup* channelGroup = new ChannelGroup(this->system);
+	channelGroup->init(name);
+	this->channelGroups.push_back(channelGroup);
+	return channelGroup;
 }

@@ -11,7 +11,7 @@
 #endif
 
 #define VULKAN_CHECK(res, msg) if (res != VK_SUCCESS) { YM_LOG_ERROR(msg); throw std::runtime_error(msg); }
-#define FMOD_CHECK(res, ...) if(res != FMOD_OK) { YM_LOG_ERROR("FMOD error! ({0}) {1}", res, FMOD_ErrorString(res)); YM_ASSERT(false, __VA_ARGS__); }
+#define FMOD_CHECK(res, ...) { FMOD_RESULT r = res; if(r != FMOD_OK && r != FMOD_ERR_INVALID_HANDLE) { YM_LOG_ERROR("FMOD error! ({0}) {1}", r, FMOD_ErrorString(res)); YM_ASSERT(false, __VA_ARGS__); }}
 
 #define Ptr(T) std::unique_ptr<T>
 #define Ref(T) std::shared_ptr<T>
