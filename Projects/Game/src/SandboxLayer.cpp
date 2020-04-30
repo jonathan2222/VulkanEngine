@@ -7,10 +7,11 @@
 #include "Engine/Core/Display/Display.h"
 #include "Engine/Core/Input/Input.h"
 #include "Engine/Core/Audio/AudioSystem.h"
+#include "Engine/Core/Scene/ObjectManager.h"
 
 void SandboxLayer::onStart(ym::Renderer* renderer)
 {
-	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Tree/Tree.glb", &this->model);
+	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Tree/Tree.glb", &this->treeModel);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Cube/Cube.gltf", &this->cubeModel);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/WaterBottle/WaterBottle.glb", &this->waterBottleModel);
 	//ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Sponza/glTF/Sponza.gltf", &this->sponzaModel);
@@ -47,6 +48,12 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 
 	this->ambientSound->play();
 	this->ambientSound->setVolume(0.2f);
+
+	// Cube
+	glm::mat4 transformCube(100.0f);
+	transformCube[3][3] = 1.0f;
+	transformCube = glm::translate(glm::mat4(1.0f), { 0.0f, -100.f, 0.f }) * transformCube;
+	this->cubeObject = ym::ObjectManager::get()->createGameObject(transformCube, &this->cubeModel);
 }
 
 void SandboxLayer::onUpdate(float dt)
@@ -111,49 +118,55 @@ void SandboxLayer::onUpdate(float dt)
 		this->music->applyVolume(-0.25f);
 		YM_LOG_INFO("Changed volume to {}", this->music->getVolume());
 	}
+
+	// ---------- Update game objects ----------
+
+	// Add tree objects when pressing E
+	static int32_t maxTrees = 100;
+	static float r = maxTrees;
+	keyState = input->getKeyState(ym::Key::E);
+	if (keyState == ym::KeyState::FIRST_RELEASED)
+		r = ++maxTrees;
+	for (int32_t i = 0; i < maxTrees; i++)
+	{
+		float angle = (float)i / (float)maxTrees * 2 * glm::pi<float>();
+		float x = glm::cos(angle) * r;
+		float z = glm::sin(angle) * r;
+		auto transform = glm::mat4(1.0f);
+		transform = glm::translate(glm::mat4(1.0f), { x, 0.f, z });
+
+		if (i >= this->treesObjects.size())
+			this->treesObjects.push_back(ym::ObjectManager::get()->createGameObject(transform, &this->treeModel));
+		else
+			this->treesObjects[i]->setTransform(transform);
+	}
+
+	// Toggle Water bottle object when pressing F
+	static bool spawn = false;
+	keyState = input->getKeyState(ym::Key::F);
+	if (keyState == ym::KeyState::FIRST_RELEASED)
+	{
+		spawn ^= 1;
+		if (spawn)
+		{
+			auto transform = glm::mat4(10.0f);
+			transform[3][3] = 1.0f;
+			transform = glm::translate(glm::mat4(1.0f), { 0.0f, 2.f, 0.f }) * transform;
+			this->watterBottleObject = ym::ObjectManager::get()->createGameObject(transform, &this->waterBottleModel);
+		}
+		else
+		{
+			ym::ObjectManager::get()->removeGameObject(this->watterBottleObject);
+		}
+	}
 }
 
 void SandboxLayer::onRender(ym::Renderer* renderer)
 {
 	renderer->begin();
 
-	static int32_t max = 100;
-	static float r = max;
-	ym::Input* input = ym::Input::get();
-	ym::KeyState keyState = input->getKeyState(ym::Key::E);
-	if (keyState == ym::KeyState::FIRST_RELEASED)
-		r = ++max;
-	static std::vector<glm::mat4> transforms;
-	for (int32_t i = 0; i < max; i++)
-	{
-		if (i >= transforms.size())
-		{
-			float angle = (float)i / (float)max * 2 * glm::pi<float>();
-			float x = glm::cos(angle) * r;
-			float z = glm::sin(angle) * r;
-			auto transform = glm::mat4(1.0f);
-			transform = glm::translate(glm::mat4(1.0f), { x, 0.f, z });
-			transforms.push_back(transform);
-		}
-	}
-	renderer->drawModel(&this->model, transforms);
-
-	static bool spawn = false;
-	keyState = input->getKeyState(ym::Key::F);
-	if (keyState == ym::KeyState::FIRST_RELEASED)
-		spawn ^= 1;
-	if (spawn)
-	{
-		auto transform = glm::mat4(10.0f);
-		transform[3][3] = 1.0f;
-		transform = glm::translate(glm::mat4(1.0f), { 0.0f, 2.f, 0.f }) * transform;
-		renderer->drawModel(&this->waterBottleModel, transform);
-	}
-
-	glm::mat4 transform(100.0f);
-	transform[3][3] = 1.0f;
-	transform = glm::translate(glm::mat4(1.0f), { 0.0f, -100.f, 0.f }) * transform;
-	renderer->drawModel(&this->cubeModel, transform);
+	
+	renderer->drawAllModels(ym::ObjectManager::get());
 	
 	//transform = glm::mat4(1.0f);
 	//transform = glm::translate(glm::mat4(1.0f), { 0.0f, 1.f, 0.f }) * transform;
@@ -171,7 +184,7 @@ void SandboxLayer::onRenderImGui()
 void SandboxLayer::onQuit()
 {
 	ym::Input::get()->unlockMouse();
-	this->model.destroy();
+	this->treeModel.destroy();
 	this->cubeModel.destroy();
 	this->waterBottleModel.destroy();
 	//this->sponzaModel.destroy();

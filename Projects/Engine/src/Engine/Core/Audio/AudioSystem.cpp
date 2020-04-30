@@ -82,7 +82,7 @@ ym::Sound* ym::AudioSystem::createSound(const std::string& filePath)
 void ym::AudioSystem::removeSound(Sound* sound)
 {
 	sound->destroy();
-	std::remove(this->sounds.begin(), this->sounds.end(), sound);
+	this->sounds.erase(std::remove(this->sounds.begin(), this->sounds.end(), sound), this->sounds.end());
 	delete sound;
 }
 
@@ -99,7 +99,7 @@ ym::Sound* ym::AudioSystem::createStream(const std::string& filePath)
 void ym::AudioSystem::removeStream(Sound* soundStream)
 {
 	soundStream->destroy();
-	std::remove(this->soundStreams.begin(), this->soundStreams.end(), soundStream);
+	this->soundStreams.erase(std::remove(this->soundStreams.begin(), this->soundStreams.end(), soundStream), this->soundStreams.end());
 	delete soundStream;
 }
 

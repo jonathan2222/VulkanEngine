@@ -8,6 +8,7 @@
 #include "Engine/Core/Audio/AudioSystem.h"
 
 #include "Utils/Timer.h"
+#include "Engine/Core/Scene/ObjectManager.h"
 
 ym::App::App()
 {
@@ -50,11 +51,15 @@ ym::App::App()
 
 	// Allocate threads for each renderer and one for the GLTFLoader.
 	ThreadManager::init((uint32_t)Renderer::ERendererType::RENDER_TYPE_SIZE + 1);
+
+	ObjectManager::get()->init();
 }
 
 ym::App::~App()
 {
 	ThreadManager::destroy();
+
+	ObjectManager::get()->destroy();
 
 	this->renderer.destroy();
 	this->commandPools.destroy();
@@ -109,6 +114,7 @@ void ym::App::run()
 			// Update the active layer
 			this->layerManager->onUpdate(dt);
 			AudioSystem::get()->update();
+			ObjectManager::get()->update();
 		}
 		// Render
 		{

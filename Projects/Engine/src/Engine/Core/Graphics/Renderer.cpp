@@ -7,6 +7,8 @@
 #include "Engine/Core/Application/LayerManager.h"
 #include "Engine/Core/Threading/ThreadManager.h"
 #include "Engine/Core/Vulkan/Pipeline/DescriptorSet.h"
+#include "Engine/Core/Scene/ObjectManager.h"
+#include "Engine/Core/Scene/GameObject.h"
 
 ym::Renderer::Renderer()
 {
@@ -132,6 +134,24 @@ void ym::Renderer::drawModel(Model* model, const glm::mat4& transform)
 void ym::Renderer::drawModel(Model* model, const std::vector<glm::mat4>& transforms)
 {
 	this->modelRenderer.drawModel(this->imageIndex, model, transforms);
+}
+
+void ym::Renderer::drawAllModels(ObjectManager* objectManager)
+{
+	auto& gameObjects = objectManager->getGameObjects();
+	for (auto& batch : gameObjects)
+	{
+		auto& objs = batch.second;
+		uint32_t size = (uint32_t)objs.size();
+		if (size > 0)
+		{
+			Model* model = objs[0]->getModel();
+			std::vector<glm::mat4> transforms(objs.size());
+			for (uint32_t i = 0; i < size; i++)
+				transforms[i] = objs[i]->getTransform();
+			drawModel(model, transforms);
+		}
+	}
 }
 
 void ym::Renderer::drawTerrain(Terrain* terrain, const glm::mat4& transform)

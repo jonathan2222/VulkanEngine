@@ -12,6 +12,7 @@
 
 namespace ym
 {
+	class ObjectManager;
 	class Terrain;
 	class Renderer
 	{
@@ -52,6 +53,11 @@ namespace ym
 			Draw instanced model.
 		*/
 		void drawModel(Model* model, const std::vector<glm::mat4>& transforms);
+
+		/*
+			Draw all objects in the object Manager as instanced models.
+		*/
+		void drawAllModels(ObjectManager* objectManager);
 
 		/*
 			Draw a terrain object with frustum culling.

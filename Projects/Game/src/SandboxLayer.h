@@ -8,6 +8,8 @@
 #include "Engine/Core/Audio/Sound.h"
 #include "Engine/Core/Audio/ChannelGroup.h"
 
+#include "Engine/Core/Scene/GameObject.h"
+
 class SandboxLayer : public ym::Layer
 {
 public:
@@ -19,7 +21,7 @@ public:
 	void onQuit() override;
 
 private:
-	ym::Model model;
+	ym::Model treeModel;
 	ym::Model cubeModel;
 	ym::Model waterBottleModel;
 	ym::Model sponzaModel;
@@ -31,4 +33,9 @@ private:
 	ym::Sound* ambientSound;
 	ym::Sound* music;
 	ym::ChannelGroup* channelGroup;
+
+	std::vector<ym::GameObject*> treesObjects;
+	ym::GameObject* watterBottleObject;
+	ym::GameObject* cubeObject;
+	ym::GameObject* sponzaObject;
 };
