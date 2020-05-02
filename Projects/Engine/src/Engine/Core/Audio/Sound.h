@@ -1,24 +1,24 @@
 #pragma once
 
+#include "PCMFunctions.h"
 
 namespace ym
 {
+	class PortAudio;
 	class ChannelGroup;
 	class Sound
 	{
 	public:
-		Sound();
+		Sound(PortAudio* portAudioPtr);
 		~Sound();
 
-		void init();
+		void init(PCM::UserData* userData);
 		void destroy();
 
 		void play();
 		void pause();
 		void unpause();
 		void stop();
-
-		void setChannelGroup(ChannelGroup* channelGroup);
 
 		float getVolume() const;
 		void applyVolume(float volumeChange);
@@ -28,9 +28,12 @@ namespace ym
 		friend class AudioSystem;
 	private:
 		bool isCreated() const;
-		bool isChannelValid();
 
 	private:
 		float volume;
+		PaStream* stream;
+		PortAudio* portAudioPtr;
+		PCM::UserData* userData;
+		bool isStreamOn;
 	};
 }

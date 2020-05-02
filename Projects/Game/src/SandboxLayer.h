@@ -27,13 +27,10 @@ private:
 	ym::Terrain terrain;
 	ym::Camera camera;
 
-	/*
 	ym::Sound* cameraLockSound;
 	ym::Sound* cameraUnlockSound;
 	ym::Sound* ambientSound;
 	ym::Sound* music;
-	ym::ChannelGroup* channelGroup;
-	*/
 
 	std::vector<ym::GameObject*> treesObjects;
 	ym::GameObject* watterBottleObject;

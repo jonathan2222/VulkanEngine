@@ -1,7 +1,10 @@
 #include "stdafx.h"
 #include "Sound.h"
 
-ym::Sound::Sound() : volume(0.0f)
+#include "PortAudio.h"
+#include "AudioSystem.h"
+
+ym::Sound::Sound(PortAudio* portAudioPtr) : volume(0.0f), stream(nullptr), portAudioPtr(portAudioPtr), isStreamOn(false)
 {
 }
 
@@ -10,48 +13,63 @@ ym::Sound::~Sound()
 	destroy();
 }
 
-void ym::Sound::init()
+void ym::Sound::init(PCM::UserData* userData)
 {
-	
+	this->userData = userData;
+	PaStreamParameters outputParameters;
+	outputParameters.device = this->portAudioPtr->getDeviceIndex();
+	outputParameters.channelCount = 2;       // stereo output
+	outputParameters.sampleFormat = this->userData->sampleFormat; // 32 bit floating point output
+	outputParameters.suggestedLatency = this->portAudioPtr->getDeviceInfo()->defaultLowOutputLatency;
+	outputParameters.hostApiSpecificStreamInfo = NULL;
+
+	// Create stream
+	PaError err = Pa_OpenStream(
+		&this->stream,
+		NULL,
+		&outputParameters,
+		SAMPLE_RATE,
+		paFramesPerBufferUnspecified,        // frames per buffer
+		paClipOff,
+		&PCM::paCallbackNormalPCM,
+		this->userData);
+	PORT_AUDIO_CHECK(err, "Failed to open default stream!");
 }
 
 void ym::Sound::destroy()
 {
 	if (isCreated())
 	{
-		
+		stop();
+		PORT_AUDIO_CHECK(Pa_CloseStream(this->stream), "Failed to close stream!");
+		this->stream = nullptr;
+		SAFE_DELETE(this->userData);
 	}
 }
 
 void ym::Sound::play()
 {
+	stop();
+	PORT_AUDIO_CHECK(Pa_StartStream(this->stream), "Failed to start stream!");
+	this->isStreamOn = true;
 }
 
 void ym::Sound::pause()
 {
-	if (isChannelValid())
-	{
-	}
+	
 }
 
 void ym::Sound::unpause()
 {
-	if (isChannelValid())
-	{
-	}
+	
 }
 
 void ym::Sound::stop()
 {
-	if (isChannelValid())
+	if (this->isStreamOn)
 	{
-	}
-}
-
-void ym::Sound::setChannelGroup(ChannelGroup* channelGroup)
-{
-	if (isChannelValid())
-	{
+		PCM::resetPos(&this->userData->handle);
+		PORT_AUDIO_CHECK(Pa_StopStream(this->stream), "Failed to stop stream!");
 	}
 }
 
@@ -69,8 +87,9 @@ void ym::Sound::applyVolume(float volumeChange)
 void ym::Sound::setVolume(float volume)
 {
 	this->volume = volume;
-	if (isChannelValid())
+	if (this->userData != nullptr)
 	{
+		userData->volume = volume;
 	}
 }
 
@@ -86,10 +105,5 @@ void ym::Sound::setLoop(bool state)
 
 bool ym::Sound::isCreated() const
 {
-	return false;
-}
-
-bool ym::Sound::isChannelValid()
-{
-	return true;
+	return this->stream != nullptr;
 }

@@ -20,7 +20,7 @@ void ym::PortAudio::init()
 
 void ym::PortAudio::destroy()
 {
-	if(this->errorCode != paNoError)
+	if(this->errorCode == paNoError)
 		Pa_Terminate();
 }
 

@@ -1,6 +1,9 @@
 #pragma once
 
 #include "DR/dr_helper.h"
+#include "PortAudio.h"
+
+#define SAMPLE_RATE 44100
 
 namespace ym
 {
@@ -26,9 +29,7 @@ namespace ym
 		Sound* createStream(const std::string& filePath);
 		void removeStream(Sound* soundStream);
 
-		static void loadFile(SoundHandler* soundHandler, const std::string& filePath);
-		static uint64_t readPCMFrames(SoundHandler* soundHandler, uint64_t framesToRead, float* outBuffer);
-		static uint64_t readPCMFrames(SoundHandler* soundHandler, uint64_t framesToRead, int16_t* outBuffer);
+		static void loadFile(SoundHandle* soundHandle, const std::string& filePath);
 
 	private:
 		std::vector<Sound*> sounds;
