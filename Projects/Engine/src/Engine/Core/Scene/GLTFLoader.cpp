@@ -244,8 +244,7 @@ namespace ym
 		{
 			tinygltf::Texture& textureGltf = gltfModel.textures[textureIndex];
 			tinygltf::Image& image = gltfModel.images[textureGltf.source];
-			//YM_LOG_INFO(" ->[{0}] name: {1} uri: {2} bits: {3} comp: {4} w: {5} h: {6}", textureIndex, textureGltf.name.c_str(), image.uri.c_str(), image.bits, image.component, image.width, image.height);
-
+			
 			loadImageData(folderPath, image, gltfModel, model.imageData[textureIndex]);
 
 			Texture& texture = model.textures[textureIndex];
@@ -270,15 +269,11 @@ namespace ym
 		stagingBuffers->imageMemory.bindBuffer(&stagingBuffers->imageBuffer);
 		YM_LOG_INFO("  Loaded {} texture(s).", gltfModel.textures.size());
 
-		// TODO: Load all samplers into memory and index them when needed.
-		//YM_LOG_INFO("Samplers:");
-		//if (gltfModel.samplers.empty()) YM_LOG_INFO(" ->No samplers");
 		model.samplers.resize(gltfModel.samplers.size());
 		for (size_t samplerIndex = 0; samplerIndex < gltfModel.samplers.size(); samplerIndex++)
 		{
 			tinygltf::Sampler& samplerGltf = gltfModel.samplers[samplerIndex];
-			//YM_LOG_INFO(" ->[{0}] name: {1} magFilter: {2}, minFilter: {3}", samplerIndex, samplerGltf.name.c_str(), samplerGltf.magFilter, samplerGltf.minFilter);
-
+			
 			Sampler& sampler = model.samplers[samplerIndex];
 			loadSamplerData(samplerGltf, sampler);
 		}

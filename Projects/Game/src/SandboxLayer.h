@@ -6,7 +6,6 @@
 #include "Engine/Core/Camera.h"
 
 #include "Engine/Core/Audio/Sound.h"
-#include "Engine/Core/Audio/ChannelGroup.h"
 
 #include "Engine/Core/Scene/GameObject.h"
 
@@ -28,11 +27,13 @@ private:
 	ym::Terrain terrain;
 	ym::Camera camera;
 
+	/*
 	ym::Sound* cameraLockSound;
 	ym::Sound* cameraUnlockSound;
 	ym::Sound* ambientSound;
 	ym::Sound* music;
 	ym::ChannelGroup* channelGroup;
+	*/
 
 	std::vector<ym::GameObject*> treesObjects;
 	ym::GameObject* watterBottleObject;

@@ -1,9 +1,10 @@
 #pragma once
 
-#include <FMOD/fmod.hpp>
+#include "DR/dr_helper.h"
 
 namespace ym
 {
+	class PortAudio;
 	class Sound;
 	class ChannelGroup;
 	class AudioSystem
@@ -25,14 +26,13 @@ namespace ym
 		Sound* createStream(const std::string& filePath);
 		void removeStream(Sound* soundStream);
 
-		ChannelGroup* createChannelGroup(const std::string& name);
+		static void loadFile(SoundHandler* soundHandler, const std::string& filePath);
+		static uint64_t readPCMFrames(SoundHandler* soundHandler, uint64_t framesToRead, float* outBuffer);
+		static uint64_t readPCMFrames(SoundHandler* soundHandler, uint64_t framesToRead, int16_t* outBuffer);
 
 	private:
-		FMOD::System* system;
-		uint32_t version;
-
 		std::vector<Sound*> sounds;
 		std::vector<Sound*> soundStreams;
-		std::vector<ChannelGroup*> channelGroups;
+		PortAudio* portAudio;
 	};
 }

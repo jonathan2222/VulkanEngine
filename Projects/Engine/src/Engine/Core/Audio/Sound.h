@@ -1,6 +1,5 @@
 #pragma once
 
-#include <FMOD/fmod.hpp>
 
 namespace ym
 {
@@ -8,7 +7,7 @@ namespace ym
 	class Sound
 	{
 	public:
-		Sound(FMOD::System* systemPtr);
+		Sound();
 		~Sound();
 
 		void init();
@@ -32,9 +31,6 @@ namespace ym
 		bool isChannelValid();
 
 	private:
-		FMOD::Sound* sound;
-		FMOD::Channel* channel;
-		FMOD::System* systemPtr;
 		float volume;
 	};
 }

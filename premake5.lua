@@ -118,6 +118,25 @@ end
 
 -- ==============================================================================================
 
+-- =========================================== PortAudio ===========================================
+
+function includePortAudio()
+	includedirs { "Externals/PortAudio/Include" }
+end
+
+function linkPortAudio()
+	libdirs "Externals/PortAudio/Lib/%{cfg.buildcfg}"
+	filter "configurations:Debug"
+		links { "portaudio_x64" }
+
+	filter "configurations:Release"
+		links { "portaudio_x64" }
+	
+	filter {}
+end
+
+-- ==============================================================================================
+
 -- =========================================== SPDLOG ===========================================
 
 function includeGLM()
@@ -150,8 +169,10 @@ function useEngine()
 	includeSpdlog()
 	includeGLTF()
 	
-	includeFMOD()
-	linkFMOD()
+	-- includeFMOD()
+	-- linkFMOD()
+	includePortAudio()
+	linkPortAudio()
 end
 
 -- ==============================================================================================
@@ -189,6 +210,7 @@ project "Engine"
 	includeVulkan()
 	includeGLM()
 	includeGLTF()
-	includeFMOD()
+	-- includeFMOD()
+	includePortAudio()
 
 	useSpdlog()

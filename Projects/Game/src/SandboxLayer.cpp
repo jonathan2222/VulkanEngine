@@ -39,6 +39,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 
 	renderer->setActiveCamera(&this->camera);
 
+	/*
 	this->cameraLockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOff.mp3");
 	this->cameraUnlockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOn.mp3");
 	this->ambientSound = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Ambient/Rainforest.mp3");
@@ -48,6 +49,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 
 	this->ambientSound->play();
 	this->ambientSound->setVolume(0.2f);
+	*/
 
 	// Cube
 	glm::mat4 transformCube(100.0f);
@@ -69,12 +71,12 @@ void SandboxLayer::onUpdate(float dt)
 		{
 			input->centerMouse();
 			input->lockMouse();
-			this->cameraLockSound->play();
+			//this->cameraLockSound->play();
 		}
 		else
 		{
 			input->unlockMouse();
-			this->cameraUnlockSound->play();
+			//this->cameraUnlockSound->play();
 		}
 	}
 
@@ -90,33 +92,33 @@ void SandboxLayer::onUpdate(float dt)
 
 	if (input->getKeyState(ym::Key::KP_1) == ym::KeyState::FIRST_PRESSED)
 	{
-		this->music->play();
-		this->music->setVolume(0.2f);
+		//this->music->play();
+		//this->music->setVolume(0.2f);
 		YM_LOG_INFO("Play sound");
 	}
 
 	if (input->getKeyState(ym::Key::KP_2) == ym::KeyState::FIRST_PRESSED)
 	{
-		this->music->pause();
+		//this->music->pause();
 		YM_LOG_INFO("Pause sound");
 	}
 
 	if (input->getKeyState(ym::Key::KP_3) == ym::KeyState::FIRST_PRESSED)
 	{
-		this->music->stop();
+		//this->music->stop();
 		YM_LOG_INFO("Stop sound");
 	}
 
 	if (input->getKeyState(ym::Key::KP_ADD) == ym::KeyState::FIRST_PRESSED)
 	{
-		this->music->applyVolume(0.25f);
-		YM_LOG_INFO("Changed volume to {}", this->music->getVolume());
+		//this->music->applyVolume(0.25f);
+		//YM_LOG_INFO("Changed volume to {}", this->music->getVolume());
 	}
 
 	if (input->getKeyState(ym::Key::KP_SUBTRACT) == ym::KeyState::FIRST_PRESSED)
 	{
-		this->music->applyVolume(-0.25f);
-		YM_LOG_INFO("Changed volume to {}", this->music->getVolume());
+		//this->music->applyVolume(-0.25f);
+		//YM_LOG_INFO("Changed volume to {}", this->music->getVolume());
 	}
 
 	// ---------- Update game objects ----------
