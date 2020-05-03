@@ -4,6 +4,7 @@
 #include "Engine/Core/Vulkan/SwapChain.h"
 #include "Engine/Core/Vulkan/Buffers/Framebuffer.h"
 #include "Engine/Core/Graphics/ModelRenderer.h"
+#include "Engine/Core/Graphics/CubeMapRenderer.h"
 #include "Engine/Core/Graphics/TerrainRenderer.h"
 #include "Engine/Core/Graphics/ThreadData.h"
 #include "Engine/Core/Vulkan/Pipeline/RenderPass.h"
@@ -20,7 +21,8 @@ namespace ym
 		enum ERendererType
 		{
 			RENDER_TYPE_MODEL = 0,
-			RENDER_TYPE_TERRAIN = 1,
+			RENDER_TYPE_CUBE_MAP = 1,
+			RENDER_TYPE_TERRAIN = 2,
 			RENDER_TYPE_SIZE
 		};
 
@@ -50,7 +52,7 @@ namespace ym
 		void drawModel(Model* model, const glm::mat4& transform);
 
 		/*
-			Draw instanced model.
+			Draw instanced models.
 		*/
 		void drawModel(Model* model, const std::vector<glm::mat4>& transforms);
 
@@ -58,6 +60,16 @@ namespace ym
 			Draw all objects in the object Manager as instanced models.
 		*/
 		void drawAllModels(ObjectManager* objectManager);
+
+		/*
+			Draw the scpecified cube map.
+		*/
+		void drawCubeMap(CubeMap* cubeMap, const glm::mat4& transform);
+
+		/*
+			Draw instanced cube maps.
+		*/
+		void drawCubeMap(CubeMap* cubeMap, const std::vector<glm::mat4>& transform);
 
 		/*
 			Draw a terrain object with frustum culling.
@@ -91,6 +103,7 @@ namespace ym
 
 		RenderInheritanceData renderInheritanceData;
 		ModelRenderer modelRenderer;
+		CubeMapRenderer cubeMapRenderer;
 		//TerrainRenderer terrainRenderer;
 
 		// Scene data

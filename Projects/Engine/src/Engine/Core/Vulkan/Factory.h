@@ -87,5 +87,82 @@ namespace ym
 			stagingBuffer.destroy();
 			stagingMemory.destroy();
 		}
+
+		/*
+			Creates one texture with its own device memory. (This does not set its data, use transferData to do that)
+		*/
+		static Texture* createCubeMapTexture(TextureDesc textureDesc, VkImageUsageFlags usage, VkQueueFlagBits queues, VkImageAspectFlags aspectFlags)
+		{
+			const uint32_t numFaces = 6;
+			std::vector<uint32_t> queueIndices = getQueueIndices(queues);
+			Texture* texture = new Texture();
+			texture->textureDesc = textureDesc;
+			texture->image.init(textureDesc.width, textureDesc.height, textureDesc.format, usage, queueIndices, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, numFaces);
+			texture->memory = new Memory();
+			texture->memory->bindTexture(texture);
+			texture->memory->init(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			texture->imageView.init(texture->image.getImage(), VK_IMAGE_VIEW_TYPE_CUBE, textureDesc.format, aspectFlags, numFaces);
+			return texture;
+		}
+
+		/*
+			Create a staging memory and transfer the data to the device memory which lies in the cube map texture.
+			The data in texture must have all the sides in the order right, left, top, bottom, front, back.
+		*/
+		static void transferCubeMapData(Texture* texture, CommandPool* transferCommandPool)
+		{
+			const uint32_t numFaces = 6;
+			VkDeviceSize size = (VkDeviceSize)texture->textureDesc.width * (VkDeviceSize)texture->textureDesc.height * 4;
+
+			Buffer stagingBuffer;
+			Memory stagingMemory;
+			stagingBuffer.init(size * numFaces, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, { VulkanInstance::get()->getGraphicsQueue().queueIndex });
+			stagingMemory.bindBuffer(&stagingBuffer);
+			stagingMemory.init(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+			// Transfer the data to the buffer.
+			for (uint32_t f = 0; f < numFaces; f++)
+			{
+				// This can be made in one line, instead of in a for loop!!
+				uint8_t* img = texture->textureDesc.data + f*size;
+				stagingMemory.directTransfer(&stagingBuffer, (void*)img, size, (Offset)f * size);
+			}
+
+			// Setup buffer copy regions for each face including all of its miplevels. In this case only 1 miplevel is used.
+			std::vector<VkBufferImageCopy> bufferCopyRegions;
+			for (uint32_t face = 0; face < numFaces; face++)
+			{
+				for (uint32_t level = 0; level < 1; level++)
+				{
+					VkBufferImageCopy bufferCopyRegion = {};
+					bufferCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					bufferCopyRegion.imageSubresource.mipLevel = level;
+					bufferCopyRegion.imageSubresource.baseArrayLayer = face;
+					bufferCopyRegion.imageSubresource.layerCount = 1;
+					bufferCopyRegion.imageExtent.width = texture->textureDesc.width >> level;
+					bufferCopyRegion.imageExtent.height = texture->textureDesc.height >> level;
+					bufferCopyRegion.imageExtent.depth = 1;
+					bufferCopyRegion.bufferOffset = (VkDeviceSize)(face * size);
+					bufferCopyRegions.push_back(bufferCopyRegion);
+				}
+			}
+
+			// Transfer data to texture memory.
+			Image::TransistionDesc desc;
+			desc.format = texture->textureDesc.format;
+			desc.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			desc.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			desc.pool = transferCommandPool;
+			desc.layerCount = numFaces;
+			Image & image = texture->image;
+			image.transistionLayout(desc);
+			image.copyBufferToImage(&stagingBuffer, transferCommandPool, bufferCopyRegions);
+			desc.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			desc.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			image.transistionLayout(desc);
+
+			stagingBuffer.destroy();
+			stagingMemory.destroy();
+		}
 	};
 }

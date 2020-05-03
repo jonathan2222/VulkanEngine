@@ -35,7 +35,9 @@ void ym::Renderer::init()
 	// Each renderer has a corresponding thread.
 	this->modelRenderer.init(&this->swapChain, (uint32_t)ERendererType::RENDER_TYPE_MODEL, &this->renderPass, &this->renderInheritanceData); // Uses thread 0.
 
-	//this->terrainRenderer.init(&this->swapChain, (uint32_t)ERendererType::RENDER_TYPE_TERRAIN, &this->renderPass, &this->sceneDescriptors); // Uses thread 1.
+	this->cubeMapRenderer.init(&this->swapChain, (uint32_t)ERendererType::RENDER_TYPE_CUBE_MAP, &this->renderPass, &this->renderInheritanceData); // Uses thread 1
+
+	//this->terrainRenderer.init(&this->swapChain, (uint32_t)ERendererType::RENDER_TYPE_TERRAIN, &this->renderPass, &this->sceneDescriptors); // Uses thread 2. (Will not work, 2 is occupied by GLTFLoader)
 
 	GLTFLoader::init();
 
@@ -59,6 +61,7 @@ void ym::Renderer::destroy()
 
 	// Destroy sub-renderers.
 	this->modelRenderer.destroy();
+	this->cubeMapRenderer.destroy();
 	//this->terrainRenderer.destroy();
 
 	// Destroy scene data.
@@ -115,6 +118,7 @@ bool ym::Renderer::begin()
 	this->inheritanceInfo.renderPass = this->renderPass.getRenderPass();
 
 	this->modelRenderer.begin(this->imageIndex, this->inheritanceInfo);
+	this->cubeMapRenderer.begin(this->imageIndex, this->inheritanceInfo);
 	//this->terrainRenderer.begin(this->imageIndex, this->inheritanceInfo);
 
 	return true;
@@ -154,6 +158,16 @@ void ym::Renderer::drawAllModels(ObjectManager* objectManager)
 	}
 }
 
+void ym::Renderer::drawCubeMap(CubeMap* cubeMap, const glm::mat4& transform)
+{
+	this->cubeMapRenderer.drawCubeMap(this->imageIndex, cubeMap, transform);
+}
+
+void ym::Renderer::drawCubeMap(CubeMap* cubeMap, const std::vector<glm::mat4>& transforms)
+{
+	this->cubeMapRenderer.drawCubeMap(this->imageIndex, cubeMap, transforms);
+}
+
 void ym::Renderer::drawTerrain(Terrain* terrain, const glm::mat4& transform)
 {
 	YM_LOG_WARN("drawTerrain() is not implemented!");
@@ -171,6 +185,7 @@ bool ym::Renderer::end()
 
 	// End renderers.
 	this->modelRenderer.end(this->imageIndex);
+	this->cubeMapRenderer.end(this->imageIndex);
 	//this->terrainRenderer.end(this->imageIndex);
 
 	// Submit all work.
@@ -328,10 +343,14 @@ void ym::Renderer::submit()
 	{
 		// Gather all secondary buffers.
 		std::vector<VkCommandBuffer> vkCommands;
-		std::vector<CommandBuffer*>& secondaryBuffers = this->modelRenderer.getBuffers();
-		vkCommands.push_back(secondaryBuffers[this->imageIndex]->getCommandBuffer());
-		//std::vector<CommandBuffer*>& secondaryBuffers2 = this->terrainRenderer.getGraphicsBuffers();
-		//vkCommands.push_back(secondaryBuffers2[this->imageIndex]->getCommandBuffer());
+
+		// Fetch secondary buffers from the ModelRenderer.
+		std::vector<CommandBuffer*>& secondaryBuffersModel = this->modelRenderer.getBuffers();
+		vkCommands.push_back(secondaryBuffersModel[this->imageIndex]->getCommandBuffer());
+
+		// Fetch secondary buffers from the CubeMapRenderer.
+		std::vector<CommandBuffer*>& secondaryBuffersCubeMap = this->cubeMapRenderer.getBuffers();
+		vkCommands.push_back(secondaryBuffersCubeMap[this->imageIndex]->getCommandBuffer());
 
 		// Record and execute them on the current primary command buffer.
 		CommandBuffer* buffer = this->primaryCommandBuffersGraphics[this->imageIndex];

@@ -62,11 +62,14 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	glm::mat4 transformChest(1.0f);
 	transformChest = glm::translate(glm::mat4(1.0f), { -4.0f, 1.f, -4.f }) * transformChest;
 	this->chestObject = ym::ObjectManager::get()->createGameObject(transformChest, &this->chestModel);
-	this->pokerChips = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/MovieStart.mp3", ym::PCM::Func::DISTANCE);
+	this->pokerChips = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Music/DunnoJBPet.mp3", ym::PCM::Func::DISTANCE);
 	this->pokerChips->setLoop(true);
+	this->pokerChips->setVolume(0.5f);
 	this->pokerChips->play();
 
 	ym::ObjectManager::get()->createGameObject(glm::mat4(1.f), &this->terrain2Model);
+
+	this->cubeMap.init(100.f, YM_ASSETS_FILE_PATH + "/Textures/skybox/");
 
 	/*
 	glm::mat4 transformSponza(1.0f);
@@ -142,7 +145,7 @@ void SandboxLayer::onUpdate(float dt)
 	// ---------- Update game objects ----------
 
 	// Add tree objects when pressing E
-	static int32_t maxTrees = 10;
+	static int32_t maxTrees = 15;
 	static float r = maxTrees;
 	keyState = input->getKeyState(ym::Key::E);
 	if (keyState == ym::KeyState::FIRST_RELEASED)
@@ -189,7 +192,8 @@ void SandboxLayer::onRender(ym::Renderer* renderer)
 {
 	renderer->begin();
 
-	
+	glm::mat4 transform(1.f);
+	renderer->drawCubeMap(&this->cubeMap, transform);
 	renderer->drawAllModels(ym::ObjectManager::get());
 
 	//renderer->drawTerrain(&this->terrain, glm::mat4(1.0f));
@@ -210,6 +214,7 @@ void SandboxLayer::onQuit()
 	this->sponzaModel.destroy();
 	this->chestModel.destroy();
 	this->terrain2Model.destroy();
+	this->cubeMap.destroy();
 	this->terrain.destroy();
 	this->camera.destroy();
 }

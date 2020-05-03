@@ -2,6 +2,7 @@
 
 #include "Engine/Core/Application/Layer.h"
 #include "Engine/Core/Scene/Model/Model.h"
+#include "Engine/Core/Scene/Model/CubeMap.h"
 #include "Engine/Core/Scene/Terrain/Terrain.h"
 #include "Engine/Core/Camera.h"
 
@@ -28,6 +29,8 @@ private:
 	ym::Model terrain2Model;
 	ym::Terrain terrain;
 	ym::Camera camera;
+
+	ym::CubeMap cubeMap;
 
 	ym::Sound* cameraLockSound;
 	ym::Sound* cameraUnlockSound;
