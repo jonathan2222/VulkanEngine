@@ -93,7 +93,7 @@ void ym::Sound::pause()
 
 void ym::Sound::unpause()
 {
-	
+	play();
 }
 
 void ym::Sound::stop()
