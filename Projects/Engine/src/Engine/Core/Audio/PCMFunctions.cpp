@@ -1,5 +1,20 @@
 #include "stdafx.h"
 #include "PCMFunctions.h"
+#include <limits>
+
+PaStreamCallback* ym::PCM::getCallbackFunction(Func function)
+{
+	switch (function)
+	{
+	case ym::PCM::Func::DISTANCE:
+		return paCallbackDistancePCM;
+		break;
+	case ym::PCM::Func::NORMAL:
+	default:
+		return paCallbackNormalPCM;
+		break;
+	}
+}
 
 uint64_t ym::PCM::readPCMFrames(SoundHandle* handle, uint64_t framesToRead, PaSampleFormat format, void* outBuffer)
 {
@@ -91,6 +106,58 @@ int ym::PCM::paCallbackNormalPCM(const void* inputBuffer, void* outputBuffer, un
 			*outF32++ = (float)(sample * data->volume); // Left
 			sample = *outF32;
 			*outF32++ = (float)(sample * data->volume); // Right
+		}
+	}
+
+	if (data->loop)
+	{
+		// Reset and play again.
+		if (framesRead < framesPerBuffer)
+			setPos(&data->handle, 0);
+		return paContinue;
+	}
+	else
+	{
+		// Reset and stop the stream.
+		if (framesRead < framesPerBuffer)
+		{
+			setPos(&data->handle, 0);
+			data->finished = true;
+		}
+		return data->finished ? paComplete : paContinue;
+	}
+}
+
+int ym::PCM::paCallbackDistancePCM(const void* inputBuffer, void* outputBuffer, unsigned long framesPerBuffer, const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void* userData)
+{
+	UserData* data = (UserData*)userData;
+	void* out = (float*)outputBuffer;
+	if (data->sampleFormat == paInt16)
+		out = (int16_t*)outputBuffer;
+
+	uint64_t framesRead = 0;
+	if (data->handle.asEffect)
+		framesRead = readPCMFramesEffect(&data->handle, framesPerBuffer, data->sampleFormat, out);
+	else
+		framesRead = readPCMFrames(&data->handle, framesPerBuffer, data->sampleFormat, out);
+
+	float* outF32 = (float*)out;
+	int16_t * outI16 = (int16_t*)out;
+	for (uint64_t t = 0; t < framesRead; t++)
+	{
+		if (data->sampleFormat == paInt16)
+		{
+			int16_t sample = *outI16;
+			*outI16++ = (int16_t)std::clamp((float)sample * std::clamp(data->volume * (1.f / data->distance), 0.f, 1.f), (float)INT16_MIN, (float)INT16_MAX); // Left
+			sample = *outI16;
+			*outI16++ = (int16_t)std::clamp((float)sample * std::clamp(data->volume * (1.f / data->distance), 0.f, 1.f), (float)INT16_MIN, (float)INT16_MAX); // Right
+		}
+		else if (data->sampleFormat == paFloat32)
+		{
+			float sample = *outF32;
+			*outF32++ = (float)(sample * data->volume * (1.f / data->distance)); // Left
+			sample = *outF32;
+			*outF32++ = (float)(sample * data->volume * (1.f / data->distance)); // Right
 		}
 	}
 

@@ -18,6 +18,7 @@ void ym::GameObject::init(const glm::vec3& pos, Model* modelPtr)
 void ym::GameObject::init(const glm::mat4& transform, Model* modelPtr)
 {
 	this->transform = transform;
+	this->pos = transform[3];
 	this->modelPtr = modelPtr;
 }
 

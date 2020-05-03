@@ -60,14 +60,14 @@ void ym::AudioSystem::update()
 	
 }
 
-ym::Sound* ym::AudioSystem::createSound(const std::string& filePath)
+ym::Sound* ym::AudioSystem::createSound(const std::string& filePath, PCM::Func function)
 {
 	Sound* sound = new Sound(this->portAudio);
 	PCM::UserData* userData = new PCM::UserData();
 	userData->finished = false;
 	userData->sampleFormat = paFloat32;
 	loadEffectFile(&userData->handle, filePath, userData->sampleFormat);
-	sound->init(userData);
+	sound->init(userData, function);
 	this->sounds.push_back(sound);
 	return sound;
 }
@@ -79,7 +79,7 @@ void ym::AudioSystem::removeSound(Sound* sound)
 	delete sound;
 }
 
-ym::Sound* ym::AudioSystem::createStream(const std::string& filePath)
+ym::Sound* ym::AudioSystem::createStream(const std::string& filePath, PCM::Func function)
 {
 	Sound* stream = new Sound(this->portAudio);
 	PCM::UserData* userData = new PCM::UserData();
@@ -87,7 +87,7 @@ ym::Sound* ym::AudioSystem::createStream(const std::string& filePath)
 	userData->sampleFormat = paFloat32;
 	userData->loop = true;
 	loadStreamFile(&userData->handle, filePath);
-	stream->init(userData);
+	stream->init(userData, function);
 	this->soundStreams.push_back(stream);
 	return stream;
 }

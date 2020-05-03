@@ -13,12 +13,12 @@ ym::Sound::~Sound()
 	destroy();
 }
 
-void ym::Sound::init(PCM::UserData* userData)
+void ym::Sound::init(PCM::UserData* userData, PCM::Func pcmFunction)
 {
 	this->userData = userData;
 	PaStreamParameters outputParameters;
 	outputParameters.device = this->portAudioPtr->getDeviceIndex();
-	outputParameters.channelCount = 2;       // stereo output
+	outputParameters.channelCount = 2;
 	outputParameters.sampleFormat = this->userData->sampleFormat;
 	outputParameters.suggestedLatency = this->portAudioPtr->getDeviceInfo()->defaultLowOutputLatency;
 	outputParameters.hostApiSpecificStreamInfo = NULL;
@@ -28,10 +28,10 @@ void ym::Sound::init(PCM::UserData* userData)
 		&this->stream,
 		NULL,
 		&outputParameters,
-		SAMPLE_RATE,
+		userData->handle.sampleRate,
 		paFramesPerBufferUnspecified,        // frames per buffer
 		paClipOff,
-		&PCM::paCallbackNormalPCM,
+		PCM::getCallbackFunction(pcmFunction),
 		this->userData);
 	PORT_AUDIO_CHECK(err, "Failed to open default stream!");
 }
@@ -130,6 +130,11 @@ void ym::Sound::setVolume(float volume)
 void ym::Sound::setLoop(bool state)
 {
 	this->userData->loop = state;
+}
+
+void ym::Sound::setDistance(float distance)
+{
+	this->userData->distance = distance;
 }
 
 bool ym::Sound::isCreated() const

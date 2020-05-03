@@ -13,8 +13,10 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 {
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Tree/Tree.glb", &this->treeModel);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Cube/Cube.gltf", &this->cubeModel);
+	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Scene1/Chest.glb", &this->chestModel);
+	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Scene1/Terrain2.glb", &this->terrain2Model);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/WaterBottle/WaterBottle.glb", &this->waterBottleModel);
-	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Sponza/glTF/Sponza.gltf", &this->sponzaModel);
+	//ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Sponza/glTF/Sponza.gltf", &this->sponzaModel);
 
 	int width, height;
 	int channels;
@@ -39,28 +41,39 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 
 	renderer->setActiveCamera(&this->camera);
 
-	this->cameraLockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOff.mp3");
+	this->cameraLockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOff.mp3", ym::PCM::Func::NORMAL);
 	this->cameraLockSound->setVolume(1.f);
-	this->cameraUnlockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOn.mp3");
+	this->cameraUnlockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOn.mp3", ym::PCM::Func::NORMAL);
 	this->cameraUnlockSound->setVolume(1.f);
 	
-	this->ambientSound = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Ambient/Rainforest.mp3");
+	this->ambientSound = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Ambient/Rainforest.mp3", ym::PCM::Func::NORMAL);
 	this->ambientSound->play();
-	this->ambientSound->setVolume(0.2f);
+	this->ambientSound->setVolume(0.1f);
 
-	this->music = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Music/DunnoJBPet.mp3");
-
+	this->music = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Music/DunnoJBPet.mp3", ym::PCM::Func::NORMAL);
 
 	// Cube
-	glm::mat4 transformCube(100.0f);
+	glm::mat4 transformCube(0.5f);
 	transformCube[3][3] = 1.0f;
-	transformCube = glm::translate(glm::mat4(1.0f), { 0.0f, -100.f, 0.f }) * transformCube;
+	transformCube = glm::translate(glm::mat4(1.0f), { 3.0f, 1.f, 2.f }) * transformCube;
 	this->cubeObject = ym::ObjectManager::get()->createGameObject(transformCube, &this->cubeModel);
 
+	// Add chest
+	glm::mat4 transformChest(1.0f);
+	transformChest = glm::translate(glm::mat4(1.0f), { -4.0f, 1.f, -4.f }) * transformChest;
+	this->chestObject = ym::ObjectManager::get()->createGameObject(transformChest, &this->chestModel);
+	this->pokerChips = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/MovieStart.mp3", ym::PCM::Func::DISTANCE);
+	this->pokerChips->setLoop(true);
+	this->pokerChips->play();
+
+	ym::ObjectManager::get()->createGameObject(glm::mat4(1.f), &this->terrain2Model);
+
+	/*
 	glm::mat4 transformSponza(1.0f);
 	transformSponza[3][3] = 1.0f;
 	transformSponza = glm::translate(glm::mat4(1.0f), { 0.0f, 1.f, 0.f }) * transformSponza;
 	this->sponzaObject = ym::ObjectManager::get()->createGameObject(transformSponza, &this->sponzaModel);
+	*/
 }
 
 void SandboxLayer::onUpdate(float dt)
@@ -129,7 +142,7 @@ void SandboxLayer::onUpdate(float dt)
 	// ---------- Update game objects ----------
 
 	// Add tree objects when pressing E
-	static int32_t maxTrees = 100;
+	static int32_t maxTrees = 10;
 	static float r = maxTrees;
 	keyState = input->getKeyState(ym::Key::E);
 	if (keyState == ym::KeyState::FIRST_RELEASED)
@@ -166,6 +179,10 @@ void SandboxLayer::onUpdate(float dt)
 			ym::ObjectManager::get()->removeGameObject(this->watterBottleObject);
 		}
 	}
+
+	//YM_LOG_INFO("Pos: ({}, {}, {})", this->chestObject->getPos().x, this->chestObject->getPos().y, this->chestObject->getPos().z);
+	glm::vec3 dist = this->chestObject->getPos() - this->camera.getPosition();
+	this->pokerChips->setDistance(glm::length(dist));
 }
 
 void SandboxLayer::onRender(ym::Renderer* renderer)
@@ -191,6 +208,8 @@ void SandboxLayer::onQuit()
 	this->cubeModel.destroy();
 	this->waterBottleModel.destroy();
 	this->sponzaModel.destroy();
+	this->chestModel.destroy();
+	this->terrain2Model.destroy();
 	this->terrain.destroy();
 	this->camera.destroy();
 }

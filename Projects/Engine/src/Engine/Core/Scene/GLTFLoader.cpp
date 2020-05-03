@@ -234,7 +234,11 @@ namespace ym
 	void GLTFLoader::loadTextures(std::string & folderPath, Model & model, tinygltf::Model & gltfModel, StagingBuffers * stagingBuffers)
 	{
 		//YM_LOG_INFO("Textures:");
-		if (gltfModel.textures.empty()) YM_LOG_INFO("  No textures");
+		if (gltfModel.textures.empty()) 
+		{ 
+			YM_LOG_INFO("  No textures"); 
+			return;
+		}
 		else model.hasImageMemory = true;
 
 		model.imageData.resize(gltfModel.textures.size());

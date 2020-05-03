@@ -18,33 +18,38 @@ namespace ym
 
 	void Memory::init(VkMemoryPropertyFlags memProp)
 	{
-		YM_ASSERT(this->currentOffset != 0, "No buffers/images bound before allocation of memory!");
+		if (this->currentOffset != 0)
+		{
+			YM_ASSERT(this->currentOffset != 0, "No buffers/images bound before allocation of memory!");
 
-		uint32_t typeFilter = 0;
-		for (auto buffer : this->bufferOffsets)
-			typeFilter |= buffer.first->getMemReq().memoryTypeBits;
-		for (auto texture : this->textureOffsets)
-			typeFilter |= texture.first->getMemoryRequirements().memoryTypeBits;
 
-		uint32_t memoryTypeIndex = findMemoryType(VulkanInstance::get()->getPhysicalDevice(), typeFilter, memProp);
+			uint32_t typeFilter = 0;
+			for (auto buffer : this->bufferOffsets)
+				typeFilter |= buffer.first->getMemReq().memoryTypeBits;
+			for (auto texture : this->textureOffsets)
+				typeFilter |= texture.first->getMemoryRequirements().memoryTypeBits;
 
-		VkMemoryAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = this->currentOffset;
-		allocInfo.memoryTypeIndex = memoryTypeIndex;
+			uint32_t memoryTypeIndex = findMemoryType(VulkanInstance::get()->getPhysicalDevice(), typeFilter, memProp);
 
-		VULKAN_CHECK(vkAllocateMemory(VulkanInstance::get()->getLogicalDevice(), &allocInfo, nullptr, &this->memory), "Failed to allocate memory!");
+			VkMemoryAllocateInfo allocInfo = {};
+			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+			allocInfo.allocationSize = this->currentOffset;
+			allocInfo.memoryTypeIndex = memoryTypeIndex;
 
-		for (auto buffer : this->bufferOffsets)
-			VULKAN_CHECK(vkBindBufferMemory(VulkanInstance::get()->getLogicalDevice(), buffer.first->getBuffer(), this->memory, buffer.second), "Failed to bind buffer memory!");
+			VULKAN_CHECK(vkAllocateMemory(VulkanInstance::get()->getLogicalDevice(), &allocInfo, nullptr, &this->memory), "Failed to allocate memory!");
 
-		for (auto texture : this->textureOffsets)
-			VULKAN_CHECK(vkBindImageMemory(VulkanInstance::get()->getLogicalDevice(), texture.first->image.getImage(), this->memory, texture.second), "Failed to bind image memory!");
+			for (auto buffer : this->bufferOffsets)
+				VULKAN_CHECK(vkBindBufferMemory(VulkanInstance::get()->getLogicalDevice(), buffer.first->getBuffer(), this->memory, buffer.second), "Failed to bind buffer memory!");
+
+			for (auto texture : this->textureOffsets)
+				VULKAN_CHECK(vkBindImageMemory(VulkanInstance::get()->getLogicalDevice(), texture.first->image.getImage(), this->memory, texture.second), "Failed to bind image memory!");
+		}
 	}
 
 	void Memory::destroy()
 	{
-		vkFreeMemory(VulkanInstance::get()->getLogicalDevice(), this->memory, nullptr);
+		if (this->currentOffset != 0)
+			vkFreeMemory(VulkanInstance::get()->getLogicalDevice(), this->memory, nullptr);
 	}
 
 	void Memory::bindBuffer(Buffer* buffer)

@@ -12,7 +12,7 @@ namespace ym
 		Sound(PortAudio* portAudioPtr);
 		~Sound();
 
-		void init(PCM::UserData* userData);
+		void init(PCM::UserData* userData, PCM::Func pcmFunction);
 		void destroy();
 
 		void play();
@@ -24,6 +24,7 @@ namespace ym
 		void applyVolume(float volumeChange);
 		void setVolume(float volume);
 		void setLoop(bool state);
+		void setDistance(float distance);
 
 		friend class AudioSystem;
 	private:
