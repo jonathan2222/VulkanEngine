@@ -4,7 +4,7 @@
 #include "PortAudio.h"
 #include "AudioSystem.h"
 
-ym::Sound::Sound(PortAudio* portAudioPtr) : volume(0.0f), stream(nullptr), portAudioPtr(portAudioPtr), isStreamOn(false)
+ym::Sound::Sound(PortAudio* portAudioPtr) : volume(0.0f), userData(nullptr), stream(nullptr), portAudioPtr(portAudioPtr), isStreamOn(false)
 {
 }
 
@@ -19,7 +19,7 @@ void ym::Sound::init(PCM::UserData* userData)
 	PaStreamParameters outputParameters;
 	outputParameters.device = this->portAudioPtr->getDeviceIndex();
 	outputParameters.channelCount = 2;       // stereo output
-	outputParameters.sampleFormat = this->userData->sampleFormat; // 32 bit floating point output
+	outputParameters.sampleFormat = this->userData->sampleFormat;
 	outputParameters.suggestedLatency = this->portAudioPtr->getDeviceInfo()->defaultLowOutputLatency;
 	outputParameters.hostApiSpecificStreamInfo = NULL;
 

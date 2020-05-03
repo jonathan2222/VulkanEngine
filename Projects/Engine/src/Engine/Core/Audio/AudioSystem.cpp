@@ -141,7 +141,7 @@ void ym::AudioSystem::loadEffectFile(SoundHandle* soundHandle, const std::string
 	{
 	case SoundHandle::Type::TYPE_MP3:
 	{
-		drmp3_config config;
+		drmp3_config config = {};
 		if(format == paFloat32)
 			soundHandle->directDataF32 = drmp3_open_file_and_read_pcm_frames_f32(filePath.c_str(), &config, &soundHandle->totalFrameCount, NULL);
 		else if (format == paInt16)
@@ -152,7 +152,7 @@ void ym::AudioSystem::loadEffectFile(SoundHandle* soundHandle, const std::string
 	break;
 	case SoundHandle::Type::TYPE_WAV:
 	{
-		drmp3_config config;
+		drmp3_config config = {};
 		if (format == paFloat32)
 			soundHandle->directDataF32 = drwav_open_file_and_read_pcm_frames_f32(filePath.c_str(), &soundHandle->nChannels, &soundHandle->sampleRate, &soundHandle->totalFrameCount, NULL);
 		if (format == paInt16)
