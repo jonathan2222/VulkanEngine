@@ -66,7 +66,7 @@ ym::Sound* ym::AudioSystem::createSound(const std::string& filePath)
 	PCM::UserData* userData = new PCM::UserData();
 	userData->finished = false;
 	userData->sampleFormat = paFloat32;
-	loadFile(&userData->handle, filePath);
+	loadEffectFile(&userData->handle, filePath, userData->sampleFormat);
 	sound->init(userData);
 	this->sounds.push_back(sound);
 	return sound;
@@ -81,13 +81,15 @@ void ym::AudioSystem::removeSound(Sound* sound)
 
 ym::Sound* ym::AudioSystem::createStream(const std::string& filePath)
 {
-	/*Sound* stream = new Sound(this->system);
-	FMOD_CHECK(this->system->createStream(filePath.c_str(), FMOD_DEFAULT, nullptr, &stream->sound), "Failed to create sound stream {}!", filePath.c_str());
-	FMOD_CHECK(stream->sound->setMode(FMOD_LOOP_NORMAL), "Failed to set sound mode for sound stream {}!", filePath.c_str());
-	stream->init();
+	Sound* stream = new Sound(this->portAudio);
+	PCM::UserData* userData = new PCM::UserData();
+	userData->finished = false;
+	userData->sampleFormat = paFloat32;
+	userData->loop = true;
+	loadStreamFile(&userData->handle, filePath);
+	stream->init(userData);
 	this->soundStreams.push_back(stream);
-	return stream;*/
-	return nullptr;
+	return stream;
 }
 
 void ym::AudioSystem::removeStream(Sound* soundStream)
@@ -97,8 +99,10 @@ void ym::AudioSystem::removeStream(Sound* soundStream)
 	delete soundStream;
 }
 
-void ym::AudioSystem::loadFile(SoundHandle* soundHandle, const std::string& filePath)
+void ym::AudioSystem::loadStreamFile(SoundHandle* soundHandle, const std::string& filePath)
 {
+	soundHandle->asEffect = false;
+
 	// Get file type.
 	std::string ext = filePath.substr(filePath.find_last_of(".") + 1);
 	if (ext == "mp3") soundHandle->type = SoundHandle::Type::TYPE_MP3;
@@ -117,6 +121,45 @@ void ym::AudioSystem::loadFile(SoundHandle* soundHandle, const std::string& file
 			YM_ASSERT(drwav_init_file(&soundHandle->wav, filePath.c_str(), NULL), "Failed to load sound %s of type wav!", filePath.c_str());
 		}
 		break;
+	default:
+		YM_ASSERT(false, "Failed to load sound %s, unrecognized file type!", filePath.c_str());
+		break;
+	}
+}
+
+void ym::AudioSystem::loadEffectFile(SoundHandle* soundHandle, const std::string& filePath, PaSampleFormat format)
+{
+	soundHandle->asEffect = true;
+
+	// Get file type.
+	std::string ext = filePath.substr(filePath.find_last_of(".") + 1);
+	if (ext == "mp3") soundHandle->type = SoundHandle::Type::TYPE_MP3;
+	if (ext == "wav") soundHandle->type = SoundHandle::Type::TYPE_WAV;
+
+	// Load file.
+	switch (soundHandle->type)
+	{
+	case SoundHandle::Type::TYPE_MP3:
+	{
+		drmp3_config config;
+		if(format == paFloat32)
+			soundHandle->directDataF32 = drmp3_open_file_and_read_pcm_frames_f32(filePath.c_str(), &config, &soundHandle->totalFrameCount, NULL);
+		else if (format == paInt16)
+			soundHandle->directDataI16 = drmp3_open_file_and_read_pcm_frames_s16(filePath.c_str(), &config, &soundHandle->totalFrameCount, NULL);
+		soundHandle->nChannels = config.channels;
+		soundHandle->sampleRate = config.sampleRate;
+	}
+	break;
+	case SoundHandle::Type::TYPE_WAV:
+	{
+		drmp3_config config;
+		if (format == paFloat32)
+			soundHandle->directDataF32 = drwav_open_file_and_read_pcm_frames_f32(filePath.c_str(), &soundHandle->nChannels, &soundHandle->sampleRate, &soundHandle->totalFrameCount, NULL);
+		if (format == paInt16)
+			soundHandle->directDataI16 = drwav_open_file_and_read_pcm_frames_s16(filePath.c_str(), &soundHandle->nChannels, &soundHandle->sampleRate, &soundHandle->totalFrameCount, NULL);
+		YM_ASSERT(drwav_init_file(&soundHandle->wav, filePath.c_str(), NULL), "Failed to load sound %s of type wav!", filePath.c_str());
+	}
+	break;
 	default:
 		YM_ASSERT(false, "Failed to load sound %s, unrecognized file type!", filePath.c_str());
 		break;

@@ -9,14 +9,19 @@ namespace ym
 	{
 		enum Type { TYPE_NON, TYPE_MP3, TYPE_WAV };
 		Type type{ TYPE_NON };
-		drmp3 mp3;
+
+		bool asEffect{ true };
+		uint64_t pos{ 0 };
+
+		// Used for streams.
+		drmp3 mp3; 
 		drwav wav;
 
-		~SoundHandle() {
-			if (this->type == TYPE_MP3)
-				drmp3_uninit(&this->mp3);
-			if (this->type == TYPE_WAV)
-				drwav_uninit(&this->wav);
-		};
+		// Used for effects.
+		float* directDataF32{ nullptr };
+		int16_t* directDataI16{ nullptr };
+		uint32_t nChannels{ 0 };
+		uint32_t sampleRate{ 0 };
+		uint64_t totalFrameCount{ 0 };
 	};
 }

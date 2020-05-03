@@ -43,6 +43,32 @@ void ym::Sound::destroy()
 		stop();
 		PORT_AUDIO_CHECK(Pa_CloseStream(this->stream), "Failed to close stream!");
 		this->stream = nullptr;
+
+		// Delete sound data.
+		if (this->userData->handle.asEffect)
+		{
+			if (this->userData->handle.directDataF32 != nullptr)
+			{
+				if (this->userData->handle.type == SoundHandle::TYPE_MP3)
+					drmp3_free(this->userData->handle.directDataF32, nullptr);
+				if (this->userData->handle.type == SoundHandle::TYPE_WAV)
+					drwav_free(this->userData->handle.directDataF32, nullptr);
+			}
+			if (this->userData->handle.directDataI16 != nullptr)
+			{
+				if (this->userData->handle.type == SoundHandle::TYPE_MP3)
+					drmp3_free(this->userData->handle.directDataI16, nullptr);
+				if (this->userData->handle.type == SoundHandle::TYPE_WAV)
+					drwav_free(this->userData->handle.directDataI16, nullptr);
+			}
+		}
+		else
+		{
+			if (this->userData->handle.type == SoundHandle::TYPE_MP3)
+				drmp3_uninit(&this->userData->handle.mp3);
+			if (this->userData->handle.type == SoundHandle::TYPE_WAV)
+				drwav_uninit(&this->userData->handle.wav);
+		}
 		SAFE_DELETE(this->userData);
 	}
 }
@@ -56,7 +82,13 @@ void ym::Sound::play()
 
 void ym::Sound::pause()
 {
-	
+	if (this->isStreamOn)
+	{
+		PORT_AUDIO_CHECK(Pa_StopStream(this->stream), "Failed to stop stream!");
+		PCM::setPos(&this->userData->handle, this->userData->handle.pos);
+		this->userData->finished = false;
+		this->isStreamOn = false;
+	}
 }
 
 void ym::Sound::unpause()
@@ -68,8 +100,10 @@ void ym::Sound::stop()
 {
 	if (this->isStreamOn)
 	{
-		PCM::resetPos(&this->userData->handle);
 		PORT_AUDIO_CHECK(Pa_StopStream(this->stream), "Failed to stop stream!");
+		PCM::setPos(&this->userData->handle, 0);
+		this->userData->finished = false;
+		this->isStreamOn = false;
 	}
 }
 
@@ -81,7 +115,7 @@ float ym::Sound::getVolume() const
 void ym::Sound::applyVolume(float volumeChange)
 {
 	this->volume += volumeChange;
-	setVolume(this->volume);
+	setVolume(std::clamp(this->volume, 0.f, 2.f));
 }
 
 void ym::Sound::setVolume(float volume)
@@ -95,12 +129,7 @@ void ym::Sound::setVolume(float volume)
 
 void ym::Sound::setLoop(bool state)
 {
-	if (state)
-	{
-	}
-	else
-	{
-	}
+	this->userData->loop = state;
 }
 
 bool ym::Sound::isCreated() const

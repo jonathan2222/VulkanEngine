@@ -14,7 +14,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Tree/Tree.glb", &this->treeModel);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Cube/Cube.gltf", &this->cubeModel);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/WaterBottle/WaterBottle.glb", &this->waterBottleModel);
-	//ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Sponza/glTF/Sponza.gltf", &this->sponzaModel);
+	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Sponza/glTF/Sponza.gltf", &this->sponzaModel);
 
 	int width, height;
 	int channels;
@@ -43,21 +43,24 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	this->cameraLockSound->setVolume(1.f);
 	this->cameraUnlockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOn.mp3");
 	this->cameraUnlockSound->setVolume(1.f);
-	/*
-	this->ambientSound = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Ambient/Rainforest.mp3");
-	this->music = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Music/DunnoJBPet.mp3");
 	
-	this->channelGroup = ym::AudioSystem::get()->createChannelGroup("Group A");
-
+	this->ambientSound = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Ambient/Rainforest.mp3");
 	this->ambientSound->play();
 	this->ambientSound->setVolume(0.2f);
-	*/
+
+	this->music = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Music/DunnoJBPet.mp3");
+
 
 	// Cube
 	glm::mat4 transformCube(100.0f);
 	transformCube[3][3] = 1.0f;
 	transformCube = glm::translate(glm::mat4(1.0f), { 0.0f, -100.f, 0.f }) * transformCube;
 	this->cubeObject = ym::ObjectManager::get()->createGameObject(transformCube, &this->cubeModel);
+
+	glm::mat4 transformSponza(1.0f);
+	transformSponza[3][3] = 1.0f;
+	transformSponza = glm::translate(glm::mat4(1.0f), { 0.0f, 1.f, 0.f }) * transformSponza;
+	this->sponzaObject = ym::ObjectManager::get()->createGameObject(transformSponza, &this->sponzaModel);
 }
 
 void SandboxLayer::onUpdate(float dt)
@@ -94,37 +97,33 @@ void SandboxLayer::onUpdate(float dt)
 
 	if (input->getKeyState(ym::Key::KP_1) == ym::KeyState::FIRST_PRESSED)
 	{
-		//this->music->play();
-		//this->music->setVolume(0.2f);
+		this->music->play();
+		this->music->setVolume(0.2f);
 		YM_LOG_INFO("Play sound");
 	}
 
 	if (input->getKeyState(ym::Key::KP_2) == ym::KeyState::FIRST_PRESSED)
 	{
-		//this->music->pause();
+		this->music->pause();
 		YM_LOG_INFO("Pause sound");
 	}
 
 	if (input->getKeyState(ym::Key::KP_3) == ym::KeyState::FIRST_PRESSED)
 	{
-		//this->music->stop();
+		this->music->stop();
 		YM_LOG_INFO("Stop sound");
 	}
 
 	if (input->getKeyState(ym::Key::KP_ADD) == ym::KeyState::FIRST_PRESSED)
 	{
-		this->cameraLockSound->applyVolume(0.25f);
-		YM_LOG_INFO("Changed volume to {}", this->cameraLockSound->getVolume());
-		//this->music->applyVolume(0.25f);
-		//YM_LOG_INFO("Changed volume to {}", this->music->getVolume());
+		this->music->applyVolume(0.05f);
+		YM_LOG_INFO("Changed volume to {}", this->music->getVolume());
 	}
 
 	if (input->getKeyState(ym::Key::KP_SUBTRACT) == ym::KeyState::FIRST_PRESSED)
 	{
-		this->cameraLockSound->applyVolume(-0.25f);
-		YM_LOG_INFO("Changed volume to {}", this->cameraLockSound->getVolume());
-		//this->music->applyVolume(-0.25f);
-		//YM_LOG_INFO("Changed volume to {}", this->music->getVolume());
+		this->music->applyVolume(-0.05f);
+		YM_LOG_INFO("Changed volume to {}", this->music->getVolume());
 	}
 
 	// ---------- Update game objects ----------
@@ -175,10 +174,6 @@ void SandboxLayer::onRender(ym::Renderer* renderer)
 
 	
 	renderer->drawAllModels(ym::ObjectManager::get());
-	
-	//transform = glm::mat4(1.0f);
-	//transform = glm::translate(glm::mat4(1.0f), { 0.0f, 1.f, 0.f }) * transform;
-	//renderer->drawModel(&this->sponzaModel, transform);
 
 	//renderer->drawTerrain(&this->terrain, glm::mat4(1.0f));
 
@@ -195,7 +190,7 @@ void SandboxLayer::onQuit()
 	this->treeModel.destroy();
 	this->cubeModel.destroy();
 	this->waterBottleModel.destroy();
-	//this->sponzaModel.destroy();
+	this->sponzaModel.destroy();
 	this->terrain.destroy();
 	this->camera.destroy();
 }
