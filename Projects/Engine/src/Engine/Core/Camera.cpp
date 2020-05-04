@@ -140,6 +140,21 @@ namespace ym
 		return this->position;
 	}
 
+	glm::vec3 Camera::getDirection() const
+	{
+		return glm::normalize(this->target - this->position);
+	}
+
+	glm::vec3 Camera::getRight() const
+	{
+		return this->right;
+	}
+
+	glm::vec3 Camera::getUp() const
+	{
+		return this->up;
+	}
+
 	const std::vector<Camera::Plane>& Camera::getPlanes() const
 	{
 		return this->planes;

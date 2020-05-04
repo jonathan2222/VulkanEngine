@@ -42,13 +42,13 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	renderer->setActiveCamera(&this->camera);
 
 	this->cameraLockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOff.mp3", ym::PCM::Func::NORMAL);
-	this->cameraLockSound->setVolume(1.f);
+	this->cameraLockSound->setVolume(0.5f);
 	this->cameraUnlockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOn.mp3", ym::PCM::Func::NORMAL);
-	this->cameraUnlockSound->setVolume(1.f);
+	this->cameraUnlockSound->setVolume(0.5f);
 	
 	this->ambientSound = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Ambient/Rainforest.mp3", ym::PCM::Func::NORMAL);
 	this->ambientSound->play();
-	this->ambientSound->setVolume(0.1f);
+	this->ambientSound->setVolume(0.01f);
 
 	this->music = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Music/DunnoJBPet.mp3", ym::PCM::Func::NORMAL);
 
@@ -62,7 +62,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	glm::mat4 transformChest(1.0f);
 	transformChest = glm::translate(glm::mat4(1.0f), { -4.0f, 1.f, -4.f }) * transformChest;
 	this->chestObject = ym::ObjectManager::get()->createGameObject(transformChest, &this->chestModel);
-	this->pokerChips = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Music/DunnoJBPet.mp3", ym::PCM::Func::DISTANCE);
+	this->pokerChips = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/PokerChips.mp3", ym::PCM::Func::DISTANCE);
 	this->pokerChips->setLoop(true);
 	this->pokerChips->setVolume(0.5f);
 	this->pokerChips->play();
@@ -183,9 +183,11 @@ void SandboxLayer::onUpdate(float dt)
 		}
 	}
 
-	//YM_LOG_INFO("Pos: ({}, {}, {})", this->chestObject->getPos().x, this->chestObject->getPos().y, this->chestObject->getPos().z);
-	glm::vec3 dist = this->chestObject->getPos() - this->camera.getPosition();
-	this->pokerChips->setDistance(glm::length(dist));
+	// Update sound user data.
+	this->pokerChips->setSourcePosition(this->chestObject->getPos());
+	this->pokerChips->setReceiverPosition(this->camera.getPosition());
+	this->pokerChips->setReceiverLeft(-this->camera.getRight());
+	this->pokerChips->setReceiverDir(-this->camera.getDirection());
 }
 
 void SandboxLayer::onRender(ym::Renderer* renderer)

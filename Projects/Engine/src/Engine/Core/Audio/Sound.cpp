@@ -132,9 +132,29 @@ void ym::Sound::setLoop(bool state)
 	this->userData->loop = state;
 }
 
-void ym::Sound::setDistance(float distance)
+void ym::Sound::setSourcePosition(const glm::vec3& sourcePos)
 {
-	this->userData->distance = distance;
+	this->userData->sourcePos = sourcePos;
+}
+
+void ym::Sound::setReceiverPosition(const glm::vec3& receiverPos)
+{
+	this->userData->receiverPos = receiverPos;
+}
+
+void ym::Sound::setReceiverDir(const glm::vec3& receiverDir)
+{
+	this->userData->receiverDir = receiverDir;
+}
+
+void ym::Sound::setReceiverLeft(const glm::vec3& receiverLeft)
+{
+	this->userData->receiverLeft = receiverLeft;
+}
+
+void ym::Sound::setReceiverUp(const glm::vec3& receiverUp)
+{
+	this->userData->receiverUp = receiverUp;
 }
 
 bool ym::Sound::isCreated() const

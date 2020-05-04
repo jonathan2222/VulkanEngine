@@ -26,6 +26,9 @@ namespace ym
 		glm::mat4 getProjection() const;
 		glm::mat4 getView() const;
 		glm::vec3 getPosition() const;
+		glm::vec3 getDirection() const;
+		glm::vec3 getRight() const;
+		glm::vec3 getUp() const;
 
 		const std::vector<Plane>& getPlanes() const;
 

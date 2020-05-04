@@ -24,7 +24,12 @@ namespace ym
 		void applyVolume(float volumeChange);
 		void setVolume(float volume);
 		void setLoop(bool state);
-		void setDistance(float distance);
+
+		void setSourcePosition(const glm::vec3& sourcePos);
+		void setReceiverPosition(const glm::vec3& receiverPos);
+		void setReceiverDir(const glm::vec3& receiverDir);
+		void setReceiverLeft(const glm::vec3& receiverLeft);
+		void setReceiverUp(const glm::vec3& receiverUp);
 
 		friend class AudioSystem;
 	private:
