@@ -11,6 +11,9 @@ PaStreamCallback* ym::PCM::getCallbackFunction(Func function)
 	case ym::PCM::Func::DISTANCE:
 		return paCallbackDistancePCM;
 		break;
+	case ym::PCM::Func::ECHO:
+		return paCallbackEchoPCM;
+		break;
 	case ym::PCM::Func::NORMAL:
 	default:
 		return paCallbackNormalPCM;
@@ -54,7 +57,8 @@ int ym::PCM::paCallbackNormalPCM(const void* inputBuffer, void* outputBuffer, un
 		applyToEar(data, &outputData, rightEar);
 	}
 
-	return finish(data, framesRead, framesPerBuffer);
+	// Set the continue state to false because no delay effect was used => can quit because all samples have been loaded.
+	return finish(data, framesRead, framesPerBuffer, false);
 }
 
 int ym::PCM::paCallbackDistancePCM(const void* inputBuffer, void* outputBuffer, unsigned long framesPerBuffer, const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void* userData)
@@ -71,7 +75,7 @@ int ym::PCM::paCallbackDistancePCM(const void* inputBuffer, void* outputBuffer, 
 	{
 		glm::vec3 receiverToSource = data->sourcePos - data->receiverPos;
 		float distance = glm::length(receiverToSource);
-		float attenuation = 1.f/distance;
+		float attenuation = distance <= 0.000001f ? 0.f : 1.f / (distance * distance);
 
 		// Angle from left to right [0, pi]
 		receiverToSource = glm::normalize(receiverToSource);
@@ -79,6 +83,7 @@ int ym::PCM::paCallbackDistancePCM(const void* inputBuffer, void* outputBuffer, 
 
 		// Map angle to [0, pi/2]
 		constexpr float pi = glm::pi<float>();
+		if (distance <= 0.000001f) angle = pi*.5f;
 		angle = map(angle, 0.f, pi, 0.f, pi*0.5f);
 
 		// Stereo panning
@@ -89,16 +94,69 @@ int ym::PCM::paCallbackDistancePCM(const void* inputBuffer, void* outputBuffer, 
 
 		// Left sample
 		float sample = getSample(data, &outputData);
-		float leftEar = (float)(sample * data->volume * attenuation * leftGain); // Left
+		float leftEar = (float)(sample * data->volume * attenuation * leftGain);
 		applyToEar(data, &outputData, leftEar);
 
 		// Right sample
 		sample = getSample(data, &outputData);
-		float rightEar = (float)(sample * data->volume * attenuation * rightGain); // Right
+		float rightEar = (float)(sample * data->volume * attenuation * rightGain);
 		applyToEar(data, &outputData, rightEar);
 	}
 
-	return finish(data, framesRead, framesPerBuffer);
+	// Set the continue state to false because no delay effect was used => can quit because all samples have been loaded.
+	return finish(data, framesRead, framesPerBuffer, false);
+}
+
+int ym::PCM::paCallbackEchoPCM(const void* inputBuffer, void* outputBuffer, unsigned long framesPerBuffer, const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void* userData)
+{
+	UserData* data = (UserData*)userData;
+	uint64_t framesRead = readPCM(data, framesPerBuffer, outputBuffer);
+	OutputData outputData = getOutputData(data, outputBuffer);
+
+	data->delayBuffer.setDelay(data->echoDelay);
+	bool shouldContinue = false;
+	for (uint64_t t = 0; t < framesPerBuffer; t++)
+	{
+		// Left
+		float sample = getSample(data, &outputData);
+		float oldSample = data->delayBuffer.get();
+		applyToEar(data, &outputData, oldSample);
+		float leftEar = (float)(sample * data->volume);
+		float newInput = leftEar + data->echoGain * oldSample;
+		data->delayBuffer.add(newInput);
+		shouldContinue = abs(oldSample) > 0.00000001f ? true : shouldContinue;
+
+		// Right
+		sample = getSample(data, &outputData);
+		oldSample = data->delayBuffer.get();
+		applyToEar(data, &outputData, oldSample);
+		float rightEar = (float)(sample * data->volume);
+		newInput = rightEar + data->echoGain * oldSample;
+		data->delayBuffer.add(newInput);
+		shouldContinue = abs(oldSample) > 0.00000001f ? true : shouldContinue;
+	}
+
+	return finish(data, framesRead, framesPerBuffer, shouldContinue);
+}
+
+ym::PCM::OutputData* ym::PCM::echoFilter(UserData* data, OutputData* outputData, uint64_t framesRead)
+{
+	data->delayBuffer.setDelay(data->echoDelay);
+	for (uint64_t t = 0; t < framesRead; t++)
+	{
+		// Left
+		float sample = getSample(data, outputData);
+		float oldSample = data->delayBuffer.get();
+		applyToEar(data, outputData, oldSample);
+		data->delayBuffer.add(sample + data->echoGain * oldSample);
+
+		// Right
+		sample = getSample(data, outputData);
+		oldSample = data->delayBuffer.get();
+		applyToEar(data, outputData, oldSample);
+		data->delayBuffer.add(sample + data->echoGain * oldSample);
+	}
+	return outputData;
 }
 
 uint64_t ym::PCM::readPCMFrames(SoundHandle* handle, uint64_t framesToRead, PaSampleFormat format, void* outBuffer)
@@ -160,7 +218,7 @@ void ym::PCM::applyToEar(UserData* data, OutputData* outputData, float value)
 	if (data->sampleFormat == paInt16)
 		*outputData->outI16++ = (int16_t)std::clamp(value, (float)INT16_MIN, (float)INT16_MAX);
 	else if (data->sampleFormat == paFloat32)
-		* outputData->outF32++ = value;
+		*outputData->outF32++ = value;
 }
 
 uint64_t ym::PCM::readPCM(UserData* data, uint64_t framesPerBuffer, void* outBuffer)
@@ -173,23 +231,67 @@ uint64_t ym::PCM::readPCM(UserData* data, uint64_t framesPerBuffer, void* outBuf
 	return framesRead;
 }
 
-int ym::PCM::finish(UserData* data, uint64_t framesRead, uint64_t framesPerBuffer)
+int ym::PCM::finish(UserData* data, uint64_t framesRead, uint64_t framesPerBuffer, bool continueFlag)
 {
 	if (data->loop)
 	{
 		// Reset and play again.
-		if (framesRead < framesPerBuffer)
+		if (framesRead < framesPerBuffer && !continueFlag)
 			setPos(&data->handle, 0);
 		return paContinue;
 	}
 	else
 	{
 		// Reset and stop the stream.
-		if (framesRead < framesPerBuffer)
+		if (framesRead < framesPerBuffer && !continueFlag)
 		{
 			setPos(&data->handle, 0);
 			data->finished = true;
 		}
 		return data->finished ? paComplete : paContinue;
 	}
+}
+
+void ym::PCM::DelayBuffer::init(uint64_t sampleRate)
+{
+	this->sampleRate = sampleRate; 
+	this->size = sampleRate * DELAY_BYFFER_SIZE * 2; 
+	this->data = new float[this->size]; 
+	memset(this->data, 0, this->size * sizeof(float));
+}
+
+void ym::PCM::DelayBuffer::clear()
+{
+	memset(this->data, 0, this->size * sizeof(float));
+}
+
+void ym::PCM::DelayBuffer::destroy()
+{
+	SAFE_DELETE_ARR(this->data);
+}
+
+void ym::PCM::DelayBuffer::setDelay(double seconds)
+{
+	this->endIndex = glm::min((uint64_t)(this->sampleRate * seconds * 2), this->size - 1);
+}            
+
+float ym::PCM::DelayBuffer::get() const
+{
+	return this->data[this->end];
+}
+
+void ym::PCM::DelayBuffer::add(float v)
+{
+	this->data[this->start] = v;
+	next();
+}
+
+void ym::PCM::DelayBuffer::next()
+{
+	auto nextV = [&](uint64_t v)->uint64_t {
+		return (++v) % (this->endIndex+1);
+	};
+
+	this->start = nextV(this->start);
+	this->end = nextV(this->end);
 }

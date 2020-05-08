@@ -16,6 +16,8 @@ ym::Sound::~Sound()
 void ym::Sound::init(PCM::UserData* userData, PCM::Func pcmFunction)
 {
 	this->userData = userData;
+	this->userData->delayBuffer.init(userData->handle.sampleRate);
+
 	PaStreamParameters outputParameters;
 	outputParameters.device = this->portAudioPtr->getDeviceIndex();
 	outputParameters.channelCount = 2;
@@ -69,6 +71,8 @@ void ym::Sound::destroy()
 			if (this->userData->handle.type == SoundHandle::TYPE_WAV)
 				drwav_uninit(&this->userData->handle.wav);
 		}
+
+		this->userData->delayBuffer.destroy();
 		SAFE_DELETE(this->userData);
 	}
 }
@@ -76,6 +80,7 @@ void ym::Sound::destroy()
 void ym::Sound::play()
 {
 	stop();
+	this->userData->delayBuffer.clear();
 	PORT_AUDIO_CHECK(Pa_StartStream(this->stream), "Failed to start stream!");
 	this->isStreamOn = true;
 }

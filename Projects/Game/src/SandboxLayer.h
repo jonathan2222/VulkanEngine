@@ -26,6 +26,8 @@ private:
 	ym::Model waterBottleModel;
 	ym::Model sponzaModel;
 	ym::Model chestModel;
+	ym::Model woodenCrateModel;
+	ym::Model fortModel;
 	ym::Model terrain2Model;
 	ym::Terrain terrain;
 	ym::Camera camera;
@@ -43,4 +45,6 @@ private:
 	ym::GameObject* cubeObject;
 	ym::GameObject* sponzaObject;
 	ym::GameObject* chestObject;
+	ym::GameObject* woodenCrateObject;
+	ym::GameObject* fortObject;
 };

@@ -104,6 +104,29 @@ vec3 getNormal()
 	return normalize(TBN * tangentNormal);
 }
 
+// Calculation of the lighting contribution from an optional Image Based Light source.
+// Precomputed Environment Maps are required uniform inputs and are computed as outlined in [1].
+// See our README.md on Environment Maps [3] for additional discussion.
+vec3 getIBLContribution(PBRInfo pbrInputs, vec3 n, vec3 reflection)
+{
+/*	float lod = (pbrInputs.perceptualRoughness * uboParams.prefilteredCubeMipLevels);
+	// retrieve a scale and bias to F0. See [1], Figure 3
+	vec3 brdf = (texture(samplerBRDFLUT, vec2(pbrInputs.NdotV, 1.0 - pbrInputs.perceptualRoughness))).rgb;
+	vec3 diffuseLight = SRGBtoLINEAR(tonemap(texture(samplerIrradiance, n))).rgb;
+
+	vec3 specularLight = SRGBtoLINEAR(tonemap(textureLod(prefilteredMap, reflection, lod))).rgb;
+
+	vec3 diffuse = diffuseLight * pbrInputs.diffuseColor;
+	vec3 specular = specularLight * (pbrInputs.specularColor * brdf.x + brdf.y);
+
+	// For presentation, this allows us to disable IBL terms
+	// For presentation, this allows us to disable IBL terms
+	diffuse *= uboParams.scaleIBLAmbient;
+	specular *= uboParams.scaleIBLAmbient;
+*/
+	return vec3(0.f);//diffuse + specular;
+}
+
 // Basic Lambertian diffuse
 // Implementation from Lambert's Photometria https://archive.org/details/lambertsphotome00lambgoog
 // See also [1], Equation 1
@@ -231,7 +254,7 @@ void main() {
 	vec3 color = NdotL * u_LightColor * (diffuseContrib + specContrib);
 
 	// Calculate lighting contribution from image based lighting source (IBL)
-	//color += getIBLContribution(pbrInputs, n, reflection);
+	color += getIBLContribution(pbrInputs, n, reflection);
 
 	const float u_OcclusionStrength = 1.0f;
 	// Apply optional PBR terms for additional (optional) shading

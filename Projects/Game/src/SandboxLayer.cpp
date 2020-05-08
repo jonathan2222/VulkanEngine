@@ -16,6 +16,8 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Scene1/Chest.glb", &this->chestModel);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Scene1/Terrain2.glb", &this->terrain2Model);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/WaterBottle/WaterBottle.glb", &this->waterBottleModel);
+	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Scene1/Fort.glb", &this->fortModel);
+	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Scene1/WoodenCrate.glb", &this->woodenCrateModel);
 	//ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Sponza/glTF/Sponza.gltf", &this->sponzaModel);
 
 	int width, height;
@@ -50,7 +52,10 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	this->ambientSound->play();
 	this->ambientSound->setVolume(0.01f);
 
-	this->music = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Music/DunnoJBPet.mp3", ym::PCM::Func::NORMAL);
+	this->music = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/Music/MedievalMusic.mp3", ym::PCM::Func::NORMAL);
+	this->music->setVolume(0.02f);
+	this->music->play();
+	//this->music = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Music/DunnoJBPet.mp3", ym::PCM::Func::NORMAL);
 
 	// Cube
 	glm::mat4 transformCube(0.5f);
@@ -64,10 +69,15 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	this->chestObject = ym::ObjectManager::get()->createGameObject(transformChest, &this->chestModel);
 	this->pokerChips = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/PokerChips.mp3", ym::PCM::Func::DISTANCE);
 	this->pokerChips->setLoop(true);
-	this->pokerChips->setVolume(0.5f);
+	this->pokerChips->setVolume(0.4f);
 	this->pokerChips->play();
 
 	ym::ObjectManager::get()->createGameObject(glm::mat4(1.f), &this->terrain2Model);
+	this->fortObject = ym::ObjectManager::get()->createGameObject(glm::mat4(1.f), &this->fortModel);
+
+	glm::mat4 transformCrate(1.0f);
+	transformCrate = glm::translate(glm::mat4(1.0f), { -3.0f, 1.f, 2.f }) * transformCrate;
+	this->woodenCrateObject = ym::ObjectManager::get()->createGameObject(transformCrate, &this->woodenCrateModel);
 
 	this->cubeMap.init(100.f, YM_ASSETS_FILE_PATH + "/Textures/skybox/");
 
@@ -114,7 +124,7 @@ void SandboxLayer::onUpdate(float dt)
 	if (input->getKeyState(ym::Key::KP_1) == ym::KeyState::FIRST_PRESSED)
 	{
 		this->music->play();
-		this->music->setVolume(0.2f);
+		//this->music->setVolume(0.2f);
 		YM_LOG_INFO("Play sound");
 	}
 
@@ -215,6 +225,8 @@ void SandboxLayer::onQuit()
 	this->waterBottleModel.destroy();
 	this->sponzaModel.destroy();
 	this->chestModel.destroy();
+	this->woodenCrateModel.destroy();
+	this->fortModel.destroy();
 	this->terrain2Model.destroy();
 	this->cubeMap.destroy();
 	this->terrain.destroy();
