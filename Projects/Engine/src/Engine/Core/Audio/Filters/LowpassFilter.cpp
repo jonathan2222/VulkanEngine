@@ -47,6 +47,8 @@ std::string ym::LowpassFilter::getName() const
 
 void ym::LowpassFilter::setCutoffFrequency(float cutoffFrequency)
 {
+	if (glm::abs(this->cutoffFrequency - cutoffFrequency) > 0.0001f)
+		this->delayBuffer.clear();
 	this->cutoffFrequency = cutoffFrequency;
 }
 

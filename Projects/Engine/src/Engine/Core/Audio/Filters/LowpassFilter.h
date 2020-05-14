@@ -21,7 +21,7 @@ namespace ym
 	private:
 		CircularBuffer delayBuffer;
 
-		float cutoffFrequency{ 0.f };
+		float cutoffFrequency{ 20000.f };
 		float sampleRate{ 0.f };
 	};
 }

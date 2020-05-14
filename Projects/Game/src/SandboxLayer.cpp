@@ -74,12 +74,10 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	this->chestObject = ym::ObjectManager::get()->createGameObject(transformChest, &this->chestModel);
 	this->pokerChips = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/PokerChips.mp3");
 	this->pokerChips->setLoop(true);
-	this->pokerChips->addFilter(new ym::EchoFilter());
-	this->pokerChips->addFilter(new ym::DistanceFilter());
+	//this->pokerChips->addFilter(new ym::EchoFilter());
+	//this->pokerChips->addFilter(new ym::DistanceFilter());
 	this->pokerChips->addFilter(new ym::LowpassFilter());
-	//this->pokerChips->setEchoData(0.5f, 0.25f);
 	this->pokerChips->setVolume(0.4f);
-	//this->pokerChips->setCutoffFrequency(this->pokerChips->getSampleRate()*0.02f);
 	this->pokerChips->play();
 
 	//ym::ObjectManager::get()->createGameObject(glm::mat4(1.f), &this->terrain2Model);
@@ -224,13 +222,19 @@ void SandboxLayer::onRender(ym::Renderer* renderer)
 {
 	renderer->begin();
 
-	ImGui::ShowDemoWindow();
+	//ImGui::ShowDemoWindow();
 
 	{
 		static bool my_tool_active = true;
 		ImGui::Begin("Audio settings", &my_tool_active, ImGuiWindowFlags_MenuBar);
 
-		auto& filters = this->pokerChips->getFilters();
+		ym::Sound* source = this->pokerChips;
+
+		float volume = source->getVolume();
+		ImGui::SliderFloat("Volume", &volume, 0.0f, 1.f, "%.01f");
+		source->setVolume(volume);
+
+		auto& filters = source->getFilters();
 		for (ym::Filter* filter : filters)
 		{
 			if (ImGui::CollapsingHeader(filter->getName().c_str()))
