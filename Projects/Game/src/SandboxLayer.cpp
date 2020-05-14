@@ -9,14 +9,19 @@
 #include "Engine/Core/Audio/AudioSystem.h"
 #include "Engine/Core/Scene/ObjectManager.h"
 
+#include "Engine/Core/Audio/Filters/DistanceFilter.h"
+#include "Engine/Core/Audio/Filters/EchoFilter.h"
+#include "Engine/Core/Audio/Filters/LowpassFilter.h"
+
 void SandboxLayer::onStart(ym::Renderer* renderer)
 {
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Tree/Tree.glb", &this->treeModel);
+	//ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Gun/Cerberus.glb", &this->cubeModel);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Cube/Cube.gltf", &this->cubeModel);
+	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/WaterBottle/WaterBottle.glb", &this->waterBottleModel);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Scene1/Chest.glb", &this->chestModel);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Scene1/Terrain2.glb", &this->terrain2Model);
-	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/WaterBottle/WaterBottle.glb", &this->waterBottleModel);
-	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Scene1/Fort.glb", &this->fortModel);
+	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Scene1/Castle.glb", &this->fortModel);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Scene1/WoodenCrate.glb", &this->woodenCrateModel);
 	//ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Sponza/glTF/Sponza.gltf", &this->sponzaModel);
 
@@ -43,16 +48,16 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 
 	renderer->setActiveCamera(&this->camera);
 
-	this->cameraLockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOff.mp3", ym::PCM::Func::NORMAL);
+	this->cameraLockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOff.mp3");
 	this->cameraLockSound->setVolume(0.5f);
-	this->cameraUnlockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOn.mp3", ym::PCM::Func::NORMAL);
+	this->cameraUnlockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOn.mp3");
 	this->cameraUnlockSound->setVolume(0.5f);
 	
-	this->ambientSound = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Ambient/Rainforest.mp3", ym::PCM::Func::NORMAL);
+	this->ambientSound = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Ambient/Rainforest.mp3");
 	this->ambientSound->play();
-	this->ambientSound->setVolume(0.01f);
+	this->ambientSound->setVolume(0.02f);
 
-	this->music = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/Music/MedievalMusic.mp3", ym::PCM::Func::NORMAL);
+	this->music = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/Music/MedievalMusic.mp3");
 	this->music->setVolume(0.02f);
 	this->music->play();
 	//this->music = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Music/DunnoJBPet.mp3", ym::PCM::Func::NORMAL);
@@ -67,18 +72,24 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	glm::mat4 transformChest(1.0f);
 	transformChest = glm::translate(glm::mat4(1.0f), { -4.0f, 1.f, -4.f }) * transformChest;
 	this->chestObject = ym::ObjectManager::get()->createGameObject(transformChest, &this->chestModel);
-	this->pokerChips = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/PokerChips.mp3", ym::PCM::Func::DISTANCE);
+	this->pokerChips = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/PokerChips.mp3");
 	this->pokerChips->setLoop(true);
+	this->pokerChips->addFilter(new ym::EchoFilter());
+	this->pokerChips->addFilter(new ym::DistanceFilter());
+	this->pokerChips->addFilter(new ym::LowpassFilter());
+	//this->pokerChips->setEchoData(0.5f, 0.25f);
 	this->pokerChips->setVolume(0.4f);
+	//this->pokerChips->setCutoffFrequency(this->pokerChips->getSampleRate()*0.02f);
 	this->pokerChips->play();
 
-	ym::ObjectManager::get()->createGameObject(glm::mat4(1.f), &this->terrain2Model);
+	//ym::ObjectManager::get()->createGameObject(glm::mat4(1.f), &this->terrain2Model);
 	this->fortObject = ym::ObjectManager::get()->createGameObject(glm::mat4(1.f), &this->fortModel);
 
 	glm::mat4 transformCrate(1.0f);
 	transformCrate = glm::translate(glm::mat4(1.0f), { -3.0f, 1.f, 2.f }) * transformCrate;
 	this->woodenCrateObject = ym::ObjectManager::get()->createGameObject(transformCrate, &this->woodenCrateModel);
 
+	// TODO: The scale can be changed to only set its distance to max in the shader instead!
 	this->cubeMap.init(100.f, YM_ASSETS_FILE_PATH + "/Textures/skybox/");
 
 	/*
@@ -197,12 +208,59 @@ void SandboxLayer::onUpdate(float dt)
 	this->pokerChips->setSourcePosition(this->chestObject->getPos());
 	this->pokerChips->setReceiverPosition(this->camera.getPosition());
 	this->pokerChips->setReceiverLeft(-this->camera.getRight());
-	this->pokerChips->setReceiverDir(-this->camera.getDirection());
+	this->pokerChips->setReceiverUp(-this->camera.getUp());
+
+	static float t = 0.f;
+	t += dt;
+	if (t > 3.0f)
+	{
+		//this->pokerChips->play();
+		t = 0;
+	}
+	//this->pokerChips->setReceiverDir(-this->camera.getDirection());
 }
 
 void SandboxLayer::onRender(ym::Renderer* renderer)
 {
 	renderer->begin();
+
+	ImGui::ShowDemoWindow();
+
+	{
+		static bool my_tool_active = true;
+		ImGui::Begin("Audio settings", &my_tool_active, ImGuiWindowFlags_MenuBar);
+
+		auto& filters = this->pokerChips->getFilters();
+		for (ym::Filter* filter : filters)
+		{
+			if (ImGui::CollapsingHeader(filter->getName().c_str()))
+			{
+				if (ym::LowpassFilter * lowpassF = dynamic_cast<ym::LowpassFilter*>(filter))
+				{
+					float fc = lowpassF->getCutoffFrequency();
+					ImGui::SliderFloat("Cutoff frequency", &fc, 0.0f, lowpassF->getSampleRate(), "%.0f Hz");
+					lowpassF->setCutoffFrequency(fc);
+				}
+
+				if (ym::EchoFilter * echoF = dynamic_cast<ym::EchoFilter*>(filter))
+				{
+					float gain = echoF->getGain();
+					ImGui::SliderFloat("Gain", &gain, 0.0f, 1.f, "%.3f");
+					echoF->setGain(gain);
+					float delay = echoF->getDelay();
+					ImGui::SliderFloat("Delay", &delay, 0.0f, (float)MAX_CIRCULAR_BUFFER_SIZE, "%.3f sec");
+					echoF->setDelay(delay);
+				}
+
+				if (ym::DistanceFilter * distancF = dynamic_cast<ym::DistanceFilter*>(filter))
+				{
+					ImGui::Text("Nothing to change here");
+				}
+			}
+		}
+		
+		ImGui::End();
+	}
 
 	glm::mat4 transform(1.f);
 	renderer->drawCubeMap(&this->cubeMap, transform);

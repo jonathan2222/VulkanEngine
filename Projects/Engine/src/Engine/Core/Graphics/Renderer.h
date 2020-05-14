@@ -10,6 +10,7 @@
 #include "Engine/Core/Vulkan/Pipeline/RenderPass.h"
 #include "Engine/Core/Camera.h"
 #include "Engine/Core/Graphics/RenderInheritanceData.h"
+#include "Engine/Core/Graphics/ImGUI/VKImgui.h"
 
 namespace ym
 {
@@ -105,6 +106,7 @@ namespace ym
 		ModelRenderer modelRenderer;
 		CubeMapRenderer cubeMapRenderer;
 		//TerrainRenderer terrainRenderer;
+		VKImgui imgui;
 
 		// Scene data
 		Camera* activeCamera{ nullptr };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PCMFunctions.h"
+#include "Filters/Filter.h"
 
 namespace ym
 {
@@ -12,7 +13,7 @@ namespace ym
 		Sound(PortAudio* portAudioPtr);
 		~Sound();
 
-		void init(PCM::UserData* userData, PCM::Func pcmFunction);
+		void init(PCM::UserData* userData);
 		void destroy();
 
 		void play();
@@ -25,11 +26,23 @@ namespace ym
 		void setVolume(float volume);
 		void setLoop(bool state);
 
+		void addFilter(Filter* filter);
+		std::vector<Filter*>& getFilters();
+		
 		void setSourcePosition(const glm::vec3& sourcePos);
 		void setReceiverPosition(const glm::vec3& receiverPos);
 		void setReceiverDir(const glm::vec3& receiverDir);
 		void setReceiverLeft(const glm::vec3& receiverLeft);
 		void setReceiverUp(const glm::vec3& receiverUp);
+		
+		/*
+		void setCutoffFrequency(float fc);
+		float getCutoffFrequency() const;
+		uint32_t getSampleRate() const;
+
+		void setEchoData(float delay, float gain);
+		*/
+		
 
 		friend class AudioSystem;
 	private:

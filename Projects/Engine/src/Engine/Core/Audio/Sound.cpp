@@ -13,10 +13,10 @@ ym::Sound::~Sound()
 	destroy();
 }
 
-void ym::Sound::init(PCM::UserData* userData, PCM::Func pcmFunction)
+void ym::Sound::init(PCM::UserData* userData)
 {
 	this->userData = userData;
-	this->userData->delayBuffer.init(userData->handle.sampleRate);
+	//this->userData->delayBuffer.init(userData->handle.sampleRate);
 
 	PaStreamParameters outputParameters;
 	outputParameters.device = this->portAudioPtr->getDeviceIndex();
@@ -31,9 +31,9 @@ void ym::Sound::init(PCM::UserData* userData, PCM::Func pcmFunction)
 		NULL,
 		&outputParameters,
 		userData->handle.sampleRate,
-		paFramesPerBufferUnspecified,        // frames per buffer
+		paFramesPerBufferUnspecified,
 		paClipOff,
-		PCM::getCallbackFunction(pcmFunction),
+		PCM::paCallbackPCM,
 		this->userData);
 	PORT_AUDIO_CHECK(err, "Failed to open default stream!");
 }
@@ -72,7 +72,15 @@ void ym::Sound::destroy()
 				drwav_uninit(&this->userData->handle.wav);
 		}
 
-		this->userData->delayBuffer.destroy();
+		// Clear filters.
+		for (Filter* filter : this->userData->filters)
+		{
+			filter->destroy();
+			delete filter;
+		}
+		this->userData->filters.clear();
+
+		//this->userData->delayBuffer.destroy();
 		SAFE_DELETE(this->userData);
 	}
 }
@@ -80,7 +88,7 @@ void ym::Sound::destroy()
 void ym::Sound::play()
 {
 	stop();
-	this->userData->delayBuffer.clear();
+	//this->userData->delayBuffer.clear();
 	PORT_AUDIO_CHECK(Pa_StartStream(this->stream), "Failed to start stream!");
 	this->isStreamOn = true;
 }
@@ -128,39 +136,74 @@ void ym::Sound::setVolume(float volume)
 	this->volume = volume;
 	if (this->userData != nullptr)
 	{
-		userData->volume = volume;
+		userData->soundData.volume = volume;
 	}
 }
 
 void ym::Sound::setLoop(bool state)
 {
-	this->userData->loop = state;
+	this->userData->soundData.loop = state;
+}
+
+void ym::Sound::addFilter(Filter* filter)
+{
+	filter->init(userData->handle.sampleRate);
+	this->userData->filters.push_back(filter);
+}
+
+std::vector<ym::Filter*>& ym::Sound::getFilters()
+{
+	return this->userData->filters;
 }
 
 void ym::Sound::setSourcePosition(const glm::vec3& sourcePos)
 {
-	this->userData->sourcePos = sourcePos;
+	this->userData->soundData.sourcePos = sourcePos;
 }
 
 void ym::Sound::setReceiverPosition(const glm::vec3& receiverPos)
 {
-	this->userData->receiverPos = receiverPos;
+	this->userData->soundData.receiverPos = receiverPos;
 }
 
 void ym::Sound::setReceiverDir(const glm::vec3& receiverDir)
 {
-	this->userData->receiverDir = receiverDir;
+	YM_LOG_WARN("setReceiverDir is not implemented!");
+	//this->userData->receiverDir = receiverDir;
 }
 
 void ym::Sound::setReceiverLeft(const glm::vec3& receiverLeft)
 {
-	this->userData->receiverLeft = receiverLeft;
+	this->userData->soundData.receiverLeft = receiverLeft;
 }
 
 void ym::Sound::setReceiverUp(const glm::vec3& receiverUp)
 {
-	this->userData->receiverUp = receiverUp;
+	this->userData->soundData.receiverUp = receiverUp;
 }
+
+/*
+void ym::Sound::setCutoffFrequency(float fc)
+{
+	this->userData->fc = fc;
+}
+
+float ym::Sound::getCutoffFrequency() const
+{
+	return this->userData->fc;
+}
+
+uint32_t ym::Sound::getSampleRate() const
+{
+	return this->userData->handle.sampleRate;
+}
+
+void ym::Sound::setEchoData(float delay, float gain)
+{
+	this->userData->echoDelay = delay;
+	this->userData->echoGain = gain;
+}
+*/
 
 bool ym::Sound::isCreated() const
 {

@@ -47,6 +47,9 @@ void ym::Renderer::init()
 	this->primaryCommandBuffersGraphics = graphicsPool.createCommandBuffers(this->swapChain.getNumImages(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 	CommandPool& computePool = LayerManager::get()->getCommandPools()->computePool;
 	//this->primaryCommandBuffersCompute = computePool.createCommandBuffers(this->swapChain.getNumImages(), VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+	// Initialize debug gui.
+	this->imgui.init(&this->swapChain);
 }
 
 void ym::Renderer::preDestroy()
@@ -58,6 +61,8 @@ void ym::Renderer::preDestroy()
 void ym::Renderer::destroy()
 {
 	GLTFLoader::destroy();
+
+	this->imgui.destroy();
 
 	// Destroy sub-renderers.
 	this->modelRenderer.destroy();
@@ -116,6 +121,9 @@ bool ym::Renderer::begin()
 	this->inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 	this->inheritanceInfo.framebuffer = this->framebuffers[this->imageIndex].getFramebuffer();
 	this->inheritanceInfo.renderPass = this->renderPass.getRenderPass();
+
+	// Begin ImGUI frame, dt is not necessary.
+	this->imgui.begin(this->imageIndex, 0.016f);
 
 	this->modelRenderer.begin(this->imageIndex, this->inheritanceInfo);
 	this->cubeMapRenderer.begin(this->imageIndex, this->inheritanceInfo);
@@ -187,6 +195,10 @@ bool ym::Renderer::end()
 	this->modelRenderer.end(this->imageIndex);
 	this->cubeMapRenderer.end(this->imageIndex);
 	//this->terrainRenderer.end(this->imageIndex);
+
+	// Render debug GUI
+	this->imgui.end();
+	this->imgui.render();
 
 	// Submit all work.
 	submit();
@@ -378,7 +390,7 @@ void ym::Renderer::submit()
 		const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT };
 		std::vector<VkSemaphore> waitSemaphores = { this->imageAvailableSemaphores[this->currentFrame] };
 		VkSemaphore signalSemaphores[] = { this->renderFinishedSemaphores[this->currentFrame] };
-		std::vector<VkCommandBuffer> buffers = { buffer->getCommandBuffer() };
+		std::vector<VkCommandBuffer> buffers = { buffer->getCommandBuffer(), this->imgui.getCurrentCommandBuffer() };
 
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

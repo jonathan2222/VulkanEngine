@@ -21,7 +21,7 @@ namespace ym
 		void update();
 
 		// Assume the sound file is in stereo (Two channels). (This can be fixed in the PCMFunctions.h when processing the data!)
-		Sound* createSound(const std::string& filePath, PCM::Func function);
+		Sound* createSound(const std::string& filePath);
 		void removeSound(Sound* sound);
 
 		/*
@@ -29,7 +29,7 @@ namespace ym
 			Assume the sound file is in stereo (Two channels). (This can be fixed in the PCMFunctions.h when processing the data!)
 			TODO: Fix memory leaks when using this! (Have to do with the dr library for loading from file)
 		*/
-		Sound* createStream(const std::string& filePath, PCM::Func function);
+		Sound* createStream(const std::string& filePath);
 		void removeStream(Sound* soundStream);
 
 		static void loadStreamFile(SoundHandle* soundHandle, const std::string& filePath);
