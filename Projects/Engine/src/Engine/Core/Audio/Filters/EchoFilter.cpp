@@ -18,12 +18,11 @@ void ym::EchoFilter::begin()
 std::pair<float, float> ym::EchoFilter::process(SoundData* data, float left, float right)
 {
 	float oldLeftSampel = this->delayBuffer.get();
-	float oldRightSampel = this->delayBuffer.get();
-
 	float newLeftInput = left + this->gain * oldLeftSampel;
-	float newRightInput = right + this->gain * oldRightSampel;
-
 	this->delayBuffer.add(newLeftInput);
+
+	float oldRightSampel = this->delayBuffer.get();
+	float newRightInput = right + this->gain * oldRightSampel;
 	this->delayBuffer.add(newRightInput);
 
 	return std::pair<float, float>(oldLeftSampel, oldRightSampel);

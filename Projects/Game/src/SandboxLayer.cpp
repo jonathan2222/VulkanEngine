@@ -72,10 +72,10 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	glm::mat4 transformChest(1.0f);
 	transformChest = glm::translate(glm::mat4(1.0f), { -4.0f, 1.f, -4.f }) * transformChest;
 	this->chestObject = ym::ObjectManager::get()->createGameObject(transformChest, &this->chestModel);
-	this->pokerChips = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/PokerChips.mp3");
+	this->pokerChips = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/MovieStart.mp3");
 	this->pokerChips->setLoop(true);
-	//this->pokerChips->addFilter(new ym::EchoFilter());
-	//this->pokerChips->addFilter(new ym::DistanceFilter());
+	this->pokerChips->addFilter(new ym::EchoFilter());
+	this->pokerChips->addFilter(new ym::DistanceFilter());
 	this->pokerChips->addFilter(new ym::LowpassFilter());
 	this->pokerChips->setVolume(0.4f);
 	this->pokerChips->play();
@@ -242,7 +242,7 @@ void SandboxLayer::onRender(ym::Renderer* renderer)
 				if (ym::LowpassFilter * lowpassF = dynamic_cast<ym::LowpassFilter*>(filter))
 				{
 					float fc = lowpassF->getCutoffFrequency();
-					ImGui::SliderFloat("Cutoff frequency", &fc, 0.0f, lowpassF->getSampleRate(), "%.0f Hz");
+					ImGui::SliderFloat("Cutoff frequency", &fc, 0.0f, lowpassF->getSampleRate()*0.5f, "%.0f Hz");
 					lowpassF->setCutoffFrequency(fc);
 				}
 

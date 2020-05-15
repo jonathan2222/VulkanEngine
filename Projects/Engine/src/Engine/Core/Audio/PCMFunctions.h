@@ -22,13 +22,6 @@ namespace ym
 		};
 
 	public:
-		enum class FilterType
-		{
-			NORMAL,
-			DISTANCE,
-			ECHO,
-			LOWPASS
-		};
 
 		struct UserData
 		{
@@ -38,48 +31,16 @@ namespace ym
 			bool finished{ false };
 			PaSampleFormat sampleFormat{ paFloat32 };
 			std::vector<Filter*> filters;
-
-			// Distance
-			
-
-			// Echo effect
-			//DelayBuffer delayBuffer;
-			//float echoDelay{0.5f};
-			//float echoGain{0.5f};
-			
-			// Lowpass
-			//float fc{20000.f}; // cutoff frequency
 		};
-
-		//static PaStreamCallback* getCallbackFunction(Func function);
 
 		static void setPos(SoundHandle* handle, uint64_t newPos);
 
 		static int paCallbackPCM(const void* inputBuffer, void* outputBuffer, unsigned long framesPerBuffer,
 			const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void* userData);
 
-		static int paCallbackNormalPCM(const void* inputBuffer, void* outputBuffer, unsigned long framesPerBuffer,
-			const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void* userData);
-		/*
-		static int paCallbackDistancePCM(const void* inputBuffer, void* outputBuffer, unsigned long framesPerBuffer,
-			const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void* userData);
-
-		static int paCallbackLowpassPCM(const void* inputBuffer, void* outputBuffer, unsigned long framesPerBuffer,
-			const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void* userData);
-
-		static int paCallbackEchoPCM(const void* inputBuffer, void* outputBuffer, unsigned long framesPerBuffer,
-			const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void* userData);
-
-		static int paCallbackEchoDistancePCM(const void* inputBuffer, void* outputBuffer, unsigned long framesPerBuffer,
-			const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void* userData);
-
-		static OutputData* echoFilter(UserData* data, OutputData* outputData, uint64_t framesRead);
-		*/
-
 	private:
 		static uint64_t readPCMFrames(SoundHandle* handle, uint64_t framesToRead, PaSampleFormat format, void* outBuffer);
 		static uint64_t readPCMFramesEffect(SoundHandle* handle, uint64_t framesToRead, PaSampleFormat format, void* outBuffer);
-		static float getSample(UserData * data, OutputData * outputData);
 		static std::pair<float, float> getSamples(UserData* data, OutputData* outputData);
 		static OutputData getOutputData(UserData* data, void* out);
 		static void applyToEar(UserData* data, OutputData* outputData, float value);

@@ -9,9 +9,14 @@ void ym::CircularBuffer::init(uint64_t sampleRate)
 	memset(this->data, 0, this->size * sizeof(float));
 }
 
-void ym::CircularBuffer::clear()
+void ym::CircularBuffer::clearAll()
 {
 	memset(this->data, 0, this->size * sizeof(float));
+}
+
+void ym::CircularBuffer::clear()
+{
+	memset(this->data, 0, (this->endIndex+1) * sizeof(float));
 }
 
 void ym::CircularBuffer::destroy()

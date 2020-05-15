@@ -14,6 +14,7 @@ namespace ym
 		float* data{ nullptr }; // This functions like a ring buffer.
 
 		void init(uint64_t sampleRate);
+		void clearAll();
 		void clear();
 		void destroy();
 		void setDelay(double seconds);
