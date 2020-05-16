@@ -39,6 +39,7 @@ namespace ym
 		VkImage getImage() const;
 		VkImageLayout getLayout() const { return this->layout; }
 		uint32_t getMipLevels() const;
+		uint32_t getArrayLayers() const;
 
 	private:
 		VkImage image;
@@ -47,5 +48,6 @@ namespace ym
 		uint32_t width;
 		uint32_t height;
 		uint32_t mipLevels;
+		uint32_t layers;
 	};
 }

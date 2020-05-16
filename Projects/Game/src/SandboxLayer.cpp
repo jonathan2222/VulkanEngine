@@ -90,7 +90,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	this->woodenCrateObject = ym::ObjectManager::get()->createGameObject(transformCrate, &this->woodenCrateModel);
 
 	// TODO: The scale can be changed to only set its distance to max in the shader instead!
-	this->cubeMap.init(100.f);// , YM_ASSETS_FILE_PATH + "/Textures/skybox/");
+	this->cubeMap.init(100.f);//, YM_ASSETS_FILE_PATH + "/Textures/skybox/");
 
 	/*
 	glm::mat4 transformSponza(1.0f);
@@ -102,7 +102,6 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	// Test HDR
 	int widthHDR = 0, heightHDR = 0, nrComponentsHDR = 0;
 	std::string hdrPath = YM_ASSETS_FILE_PATH + "/Textures/HDRs/spruit_sunrise_2k.hdr";
-	//stbi_set_flip_vertically_on_load(true);
 	float* dataHDR = stbi_loadf(hdrPath.c_str(), &widthHDR, &heightHDR, &nrComponentsHDR, 4);
 	if (dataHDR)
 	{
@@ -121,6 +120,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 		ym::Texture* newTexture = renderer->convertEquirectangularToCubemap(1024, texture, &temp);
 		temp.destroy();
 		texture->destroy();
+		SAFE_DELETE(texture);
 		//this->cubeMapHDR.init(100.f);
 		ym::Factory::applyTextureDescriptor(newTexture, this->cubeMap.getSampler());
 		this->cubeMap.setTexture(newTexture);

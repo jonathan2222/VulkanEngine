@@ -92,7 +92,8 @@ ym::Texture* ym::CubeMapRenderer::convertEquirectangularToCubemap(uint32_t sideS
 	textureDesc.height = extent.height;
 	textureDesc.format = texture->textureDesc.format;
 	textureDesc.data = nullptr;
-	Texture* newTexture = Factory::createCubeMapTexture(textureDesc, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+	uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(textureDesc.width, textureDesc.height)))) + 1;
+	Texture* newTexture = Factory::createCubeMapTexture(textureDesc, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
 
 	textureDesc = {};
 	textureDesc.width = sideSize;
@@ -109,16 +110,6 @@ ym::Texture* ym::CubeMapRenderer::convertEquirectangularToCubemap(uint32_t sideS
 		VK_IMAGE_LAYOUT_UNDEFINED, 
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	commandPool->endSingleTimeCommand(commandBuffer);
-
-	/*
-	Image::TransistionDesc imgTransistionDesc;
-	imgTransistionDesc.pool = &LayerManager::get()->getCommandPools()->graphicsPool;
-	imgTransistionDesc.layerCount = 1;
-	imgTransistionDesc.format = image->textureDesc.format;
-	imgTransistionDesc.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imgTransistionDesc.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	image->image.transistionLayout(imgTransistionDesc);
-	*/
 
 	Pipeline pipeline;
 	Shader shader;
@@ -261,83 +252,91 @@ ym::Texture* ym::CubeMapRenderer::convertEquirectangularToCubemap(uint32_t sideS
 
 	commandBuffer = commandPool->beginSingleTimeCommand();
 
-	VkImageSubresourceRange subresourceRange = {};
-	subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	subresourceRange.baseMipLevel = 0;
-	subresourceRange.levelCount = 1;
-	subresourceRange.layerCount = 6;
-	newTexture->image.setLayout(
-		commandBuffer,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		subresourceRange);
-
-	for (uint32_t f = 0; f < 6; f++) {
-		commandBuffer->cmdBeginRenderPass(&renderPass, frameBuffer, extent, clearValues, VK_SUBPASS_CONTENTS_INLINE);
-
-		VkBuffer buffer = cubeMap->getVertexBuffer()->getBuffer();
-
-		// Update shader push constant block
-		glm::mat4 mvp = glm::perspective((float)(3.1415f / 2.0), 1.0f, 0.1f, (float)sideSize) * matrices[f];
-		vkCmdPushConstants(commandBuffer->getCommandBuffer(), pipeline.getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &mvp);
-
-		commandBuffer->cmdBindPipeline(&pipeline);
-		VkDeviceSize offset = 0;
-		commandBuffer->cmdBindVertexBuffers(0, 1, &buffer, &offset);
-
-		std::vector<VkDescriptorSet> sets = { descriptorSet };
-		std::vector<uint32_t> offsets;
-		commandBuffer->cmdBindDescriptorSets(&pipeline, 0, sets, offsets);
-		commandBuffer->cmdDraw(36, 1, 0, 0);
-
-		commandBuffer->cmdEndRenderPass();
-
-		image->image.setLayout(
+	for (uint32_t i = 0; i < mipLevels; i++) {
+		VkImageSubresourceRange subresourceRange = {};
+		subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		subresourceRange.baseMipLevel = i;
+		subresourceRange.levelCount = 1;
+		subresourceRange.layerCount = 6;
+		newTexture->image.setLayout(
 			commandBuffer,
-			VK_IMAGE_ASPECT_COLOR_BIT,
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-		// Copy region for transfer from framebuffer to cube face
-		VkImageCopy copyRegion = {};
-		copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		copyRegion.srcSubresource.baseArrayLayer = 0;
-		copyRegion.srcSubresource.mipLevel = 0;
-		copyRegion.srcSubresource.layerCount = 1;
-		copyRegion.srcOffset = { 0, 0, 0 };
-		copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		copyRegion.dstSubresource.baseArrayLayer = f;
-		copyRegion.dstSubresource.mipLevel = 0;
-		copyRegion.dstSubresource.layerCount = 1;
-		copyRegion.dstOffset = { 0, 0, 0 };
-		copyRegion.extent.width = extent.width;
-		copyRegion.extent.height = extent.height;
-		copyRegion.extent.depth = 1;
-
-		vkCmdCopyImage(
-			commandBuffer->getCommandBuffer(),
-			image->image.getImage(),
-			VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-			newTexture->image.getImage(),
+			VK_IMAGE_LAYOUT_UNDEFINED,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			1,
-			&copyRegion);
+			subresourceRange);
 
-		// Transform framebuffer color attachment back (Used if more mipmaps else not necessary!)
-		image->image.setLayout(
-			commandBuffer,
-			VK_IMAGE_ASPECT_COLOR_BIT,
-			VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		for (uint32_t f = 0; f < 6; f++) {
+			commandBuffer->cmdBeginRenderPass(&renderPass, frameBuffer, extent, clearValues, VK_SUBPASS_CONTENTS_INLINE);
+
+			VkBuffer buffer = cubeMap->getVertexBuffer()->getBuffer();
+
+			// Update shader push constant block
+			glm::mat4 mvp = glm::perspective((float)(3.1415f / 2.0), 1.0f, 0.1f, (float)sideSize) * matrices[f];
+			vkCmdPushConstants(commandBuffer->getCommandBuffer(), pipeline.getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &mvp);
+
+			commandBuffer->cmdBindPipeline(&pipeline);
+			VkDeviceSize offset = 0;
+			commandBuffer->cmdBindVertexBuffers(0, 1, &buffer, &offset);
+
+			std::vector<VkDescriptorSet> sets = { descriptorSet };
+			std::vector<uint32_t> offsets;
+			commandBuffer->cmdBindDescriptorSets(&pipeline, 0, sets, offsets);
+			commandBuffer->cmdDraw(36, 1, 0, 0);
+
+			commandBuffer->cmdEndRenderPass();
+
+			image->image.setLayout(
+				commandBuffer,
+				VK_IMAGE_ASPECT_COLOR_BIT,
+				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+			// Copy region for transfer from framebuffer to cube face
+			VkImageCopy copyRegion = {};
+			copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			copyRegion.srcSubresource.baseArrayLayer = 0;
+			copyRegion.srcSubresource.mipLevel = 0;
+			copyRegion.srcSubresource.layerCount = 1;
+			copyRegion.srcOffset = { 0, 0, 0 };
+			copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			copyRegion.dstSubresource.baseArrayLayer = f;
+			copyRegion.dstSubresource.mipLevel = 0;
+			copyRegion.dstSubresource.layerCount = 1;
+			copyRegion.dstOffset = { 0, 0, 0 };
+			copyRegion.extent.width = extent.width;
+			copyRegion.extent.height = extent.height;
+			copyRegion.extent.depth = 1;
+
+			vkCmdCopyImage(
+				commandBuffer->getCommandBuffer(),
+				image->image.getImage(),
+				VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				newTexture->image.getImage(),
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				1,
+				&copyRegion);
+
+			// Transform framebuffer color attachment back (Used if more mipmaps else not necessary!)
+			image->image.setLayout(
+				commandBuffer,
+				VK_IMAGE_ASPECT_COLOR_BIT,
+				VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		}
+
+		if (mipLevels == 1)
+		{
+			newTexture->image.setLayout(
+				commandBuffer,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				subresourceRange);
+		}
 	}
 
-	newTexture->image.setLayout(
-		commandBuffer,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		subresourceRange);
-
 	commandPool->endSingleTimeCommand(commandBuffer);
+
+	if (mipLevels > 1)
+		Factory::generateMipmaps(newTexture);
 
 	vkDestroyFramebuffer(VulkanInstance::get()->getLogicalDevice(), frameBuffer, nullptr);
 	descLayout.destroy();

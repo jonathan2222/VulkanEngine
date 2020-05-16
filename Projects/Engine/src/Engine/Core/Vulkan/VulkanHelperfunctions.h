@@ -290,15 +290,17 @@ namespace ym
 			VkImageLayout oldImageLayout,
 			VkImageLayout newImageLayout,
 			uint32_t mipLevels,
+			uint32_t arrayLayer,
 			VkPipelineStageFlags srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 			VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)
 		{
 			// Code from SaschaWillems: https://github.com/SaschaWillems/Vulkan/
 			VkImageSubresourceRange subresourceRange = {};
 			subresourceRange.aspectMask = aspectMask;
+			subresourceRange.baseArrayLayer = 0;
 			subresourceRange.baseMipLevel = 0;
 			subresourceRange.levelCount = mipLevels;
-			subresourceRange.layerCount = 1;
+			subresourceRange.layerCount = arrayLayer;
 			setImageLayout(cmdbuffer, image, oldImageLayout, newImageLayout, subresourceRange, srcStageMask, dstStageMask);
 		}
 	}

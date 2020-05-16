@@ -163,7 +163,7 @@ namespace ym
 			}
 			else
 			{
-				Factory::generateMipmaps(&texture, mipLevels);
+				Factory::generateMipmaps(&texture);
 			}
 		}
 		model->imageData.clear();

@@ -59,8 +59,11 @@ void ym::CubeMap::init(float scale, const std::string& texturePath)
 		textureDesc.height = height;
 		textureDesc.format = format;
 		textureDesc.data = (void*)facesData.data();
-		this->cubemapTexture = Factory::createCubeMapTexture(textureDesc, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(textureDesc.width, textureDesc.height)))) + 1;
+		this->cubemapTexture = Factory::createCubeMapTexture(textureDesc, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
 		Factory::transferCubeMapData(this->cubemapTexture, pool);
+		if(mipLevels > 1)
+			Factory::generateMipmaps(this->cubemapTexture);
 		for (stbi_uc* img : imgs) delete img;
 		imgs.clear();
 	}

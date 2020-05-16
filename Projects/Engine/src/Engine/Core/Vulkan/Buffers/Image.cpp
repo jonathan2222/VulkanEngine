@@ -20,6 +20,7 @@ namespace ym
 		this->width = width;
 		this->height = height;
 		this->mipLevels = mipLevels;
+		this->layers = arrayLayers;
 
 		VkImageCreateInfo imageInfo = {};
 		imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -137,14 +138,12 @@ namespace ym
 
 	void Image::setLayout(CommandBuffer* cmdBuff, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout)
 	{
-		YM_LOG_ERROR("Transition of layout for multiple mipmaps is not implemented!");
-		Img::setImageLayout(cmdBuff->getCommandBuffer(), this->image, aspectMask, oldImageLayout, newImageLayout, this->mipLevels);
+		Img::setImageLayout(cmdBuff->getCommandBuffer(), this->image, aspectMask, oldImageLayout, newImageLayout, this->mipLevels, this->layers);
 		this->layout = newImageLayout;
 	}
 
 	void Image::setLayout(CommandBuffer* cmdBuff, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkImageSubresourceRange subresourceRange)
 	{
-		YM_LOG_ERROR("Transition of layout for multiple mipmaps is not implemented!");
 		Img::setImageLayout(cmdBuff->getCommandBuffer(), this->image, oldImageLayout, newImageLayout, subresourceRange);
 		this->layout = newImageLayout;
 	}
@@ -185,5 +184,9 @@ namespace ym
 	uint32_t Image::getMipLevels() const
 	{
 		return this->mipLevels;
+	}
+	uint32_t Image::getArrayLayers() const
+	{
+		return this->layers;
 	}
 }
