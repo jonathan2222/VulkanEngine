@@ -13,6 +13,8 @@
 #include "Engine/Core/Audio/Filters/EchoFilter.h"
 #include "Engine/Core/Audio/Filters/LowpassFilter.h"
 
+#include "Engine/Core/Vulkan/Factory.h"
+
 void SandboxLayer::onStart(ym::Renderer* renderer)
 {
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Tree/Tree.glb", &this->treeModel);
@@ -88,7 +90,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	this->woodenCrateObject = ym::ObjectManager::get()->createGameObject(transformCrate, &this->woodenCrateModel);
 
 	// TODO: The scale can be changed to only set its distance to max in the shader instead!
-	this->cubeMap.init(100.f, YM_ASSETS_FILE_PATH + "/Textures/skybox/");
+	this->cubeMap.init(100.f);// , YM_ASSETS_FILE_PATH + "/Textures/skybox/");
 
 	/*
 	glm::mat4 transformSponza(1.0f);
@@ -96,6 +98,37 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	transformSponza = glm::translate(glm::mat4(1.0f), { 0.0f, 1.f, 0.f }) * transformSponza;
 	this->sponzaObject = ym::ObjectManager::get()->createGameObject(transformSponza, &this->sponzaModel);
 	*/
+
+	// Test HDR
+	int widthHDR = 0, heightHDR = 0, nrComponentsHDR = 0;
+	std::string hdrPath = YM_ASSETS_FILE_PATH + "/Textures/HDRs/spruit_sunrise_2k.hdr";
+	stbi_set_flip_vertically_on_load(true);
+	float* dataHDR = stbi_loadf(hdrPath.c_str(), &widthHDR, &heightHDR, &nrComponentsHDR, 4);
+	if (dataHDR)
+	{
+		ym::TextureDesc textureDesc;
+		textureDesc.width = (uint32_t)widthHDR;
+		textureDesc.height = (uint32_t)heightHDR;
+		textureDesc.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		textureDesc.data = (void*)dataHDR;
+		ym::Texture* texture = ym::Factory::createTexture(textureDesc, VK_IMAGE_USAGE_SAMPLED_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
+		ym::CommandPools* commandPools = ym::LayerManager::get()->getCommandPools();
+		ym::Factory::transferData(texture, &commandPools->graphicsPool);
+		stbi_image_free(dataHDR);
+
+		ym::CubeMap temp;
+		temp.init(1.f);
+		ym::Texture* newTexture = renderer->convertEquirectangularToCubemap(512, texture, &temp);
+		temp.destroy();
+		texture->destroy();
+		//this->cubeMapHDR.init(100.f);
+		ym::Factory::applyTextureDescriptor(newTexture, this->cubeMap.getSampler());
+		this->cubeMap.setTexture(newTexture);
+	}
+	else
+	{
+		YM_LOG_WARN("Could not load HDR! Path: {}", hdrPath.c_str());
+	}
 }
 
 void SandboxLayer::onUpdate(float dt)
@@ -224,47 +257,7 @@ void SandboxLayer::onRender(ym::Renderer* renderer)
 
 	//ImGui::ShowDemoWindow();
 
-	{
-		static bool my_tool_active = true;
-		ImGui::Begin("Audio settings", &my_tool_active, ImGuiWindowFlags_MenuBar);
-
-		ym::Sound* source = this->pokerChips;
-
-		float volume = source->getVolume();
-		ImGui::SliderFloat("Volume", &volume, 0.0f, 1.f, "%.01f");
-		source->setVolume(volume);
-
-		auto& filters = source->getFilters();
-		for (ym::Filter* filter : filters)
-		{
-			if (ImGui::CollapsingHeader(filter->getName().c_str()))
-			{
-				if (ym::LowpassFilter * lowpassF = dynamic_cast<ym::LowpassFilter*>(filter))
-				{
-					float fc = lowpassF->getCutoffFrequency();
-					ImGui::SliderFloat("Cutoff frequency", &fc, 0.0f, lowpassF->getSampleRate()*0.5f, "%.0f Hz");
-					lowpassF->setCutoffFrequency(fc);
-				}
-
-				if (ym::EchoFilter * echoF = dynamic_cast<ym::EchoFilter*>(filter))
-				{
-					float gain = echoF->getGain();
-					ImGui::SliderFloat("Gain", &gain, 0.0f, 1.f, "%.3f");
-					echoF->setGain(gain);
-					float delay = echoF->getDelay();
-					ImGui::SliderFloat("Delay", &delay, 0.0f, (float)MAX_CIRCULAR_BUFFER_SIZE, "%.3f sec");
-					echoF->setDelay(delay);
-				}
-
-				if (ym::DistanceFilter * distancF = dynamic_cast<ym::DistanceFilter*>(filter))
-				{
-					ImGui::Text("Nothing to change here");
-				}
-			}
-		}
-		
-		ImGui::End();
-	}
+	ym::AudioSystem::get()->drawAudioSettings();
 
 	glm::mat4 transform(1.f);
 	renderer->drawCubeMap(&this->cubeMap, transform);

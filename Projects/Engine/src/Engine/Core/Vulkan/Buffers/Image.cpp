@@ -120,6 +120,18 @@ namespace ym
 		desc.pool->endSingleTimeCommand(buffer);
 	}
 
+	void Image::setLayout(CommandBuffer* cmdBuff, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout)
+	{
+		Img::setImageLayout(cmdBuff->getCommandBuffer(), this->image, aspectMask, oldImageLayout, newImageLayout);
+		this->layout = newImageLayout;
+	}
+
+	void Image::setLayout(CommandBuffer* cmdBuff, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkImageSubresourceRange subresourceRange)
+	{
+		Img::setImageLayout(cmdBuff->getCommandBuffer(), this->image, oldImageLayout, newImageLayout, subresourceRange);
+		this->layout = newImageLayout;
+	}
+
 	void Image::copyBufferToImage(Buffer* buffer, CommandPool* pool)
 	{
 		VkBufferImageCopy region = {};

@@ -6,7 +6,10 @@ namespace ym
 {
 	struct SoundData
 	{
-		float volume{ 1.f };
+		float masterVolume{1.f};	// Volume for all sounds
+		float groupVolume{1.f};		// Volume for effects/streams
+		float volume{ 1.f };		// Volume for this sound
+
 		bool loop{ false };
 		glm::vec3 sourcePos;
 		glm::vec3 receiverPos;

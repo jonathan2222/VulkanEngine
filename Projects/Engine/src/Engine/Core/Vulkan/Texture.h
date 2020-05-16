@@ -13,7 +13,7 @@ namespace ym
 		uint32_t width;
 		uint32_t height;
 		VkFormat format;
-		uint8_t* data = nullptr; // This is not guaranteed to always be set.
+		void* data = nullptr; // This is not guaranteed to always be set.
 	};
 
 	struct Texture

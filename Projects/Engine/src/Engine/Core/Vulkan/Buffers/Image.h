@@ -7,6 +7,7 @@ namespace ym
 
 	class Buffer;
 	class CommandPool;
+	class CommandBuffer;
 
 	class Image
 	{
@@ -28,6 +29,8 @@ namespace ym
 		void destroy();
 
 		void transistionLayout(TransistionDesc& desc);
+		void setLayout(CommandBuffer* cmdBuff, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout);
+		void setLayout(CommandBuffer* cmdBuff, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkImageSubresourceRange subresourceRange);
 		void copyBufferToImage(Buffer* buffer, CommandPool* pool);
 		void copyBufferToImage(Buffer* buffer, CommandPool* pool, std::vector<VkBufferImageCopy> regions);
 

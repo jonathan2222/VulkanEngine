@@ -58,7 +58,7 @@ void ym::CubeMap::init(float scale, const std::string& texturePath)
 		textureDesc.width = width;
 		textureDesc.height = height;
 		textureDesc.format = format;
-		textureDesc.data = facesData.data();
+		textureDesc.data = (void*)facesData.data();
 		this->cubemapTexture = Factory::createCubeMapTexture(textureDesc, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
 		Factory::transferCubeMapData(this->cubemapTexture, pool);
 		for (stbi_uc* img : imgs) delete img;
@@ -96,14 +96,60 @@ void ym::CubeMap::init(float scale, const std::string& texturePath)
 	this->cubemapSampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 }
 
+void ym::CubeMap::init(float scale)
+{
+	CommandPool* pool = &LayerManager::get()->getCommandPools()->graphicsPool;
+
+	for (int i = 0; i < 36; i++)
+		this->cube[i] *= scale;
+
+	// Stage and transfer cube to device
+	{
+		Buffer stagingBuffer;
+		Memory stagingMemory;
+		stagingBuffer.init(sizeof(this->cube), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, { VulkanInstance::get()->getTransferQueue().queueIndex });
+		stagingMemory.bindBuffer(&stagingBuffer);
+		stagingMemory.init(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		stagingMemory.directTransfer(&stagingBuffer, this->cube, sizeof(this->cube), 0);
+
+		this->cubeBuffer.init(sizeof(this->cube), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, { VulkanInstance::get()->getGraphicsQueue().queueIndex, VulkanInstance::get()->getTransferQueue().queueIndex });
+		this->cubeMemory.bindBuffer(&this->cubeBuffer);
+		this->cubeMemory.init(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+		CommandBuffer * cmdBuff = pool->beginSingleTimeCommand();
+
+		VkBufferCopy region = {};
+		region.srcOffset = 0;
+		region.dstOffset = 0;
+		region.size = sizeof(this->cube);
+		cmdBuff->cmdCopyBuffer(stagingBuffer.getBuffer(), this->cubeBuffer.getBuffer(), 1, &region);
+
+		pool->endSingleTimeCommand(cmdBuff);
+		stagingBuffer.destroy();
+		stagingMemory.destroy();
+	}
+
+	// Create sampler
+	// TODO: This needs more control, should be compareOp=VK_COMPARE_OP_NEVER!
+	this->cubemapSampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+}
+
 void ym::CubeMap::destroy()
 {
-	this->cubemapTexture->destroy();
-	SAFE_DELETE(this->cubemapTexture);
+	if (this->cubemapTexture != nullptr)
+	{
+		this->cubemapTexture->destroy();
+		SAFE_DELETE(this->cubemapTexture);
+	}
 	this->cubemapSampler.destroy();
 
 	this->cubeBuffer.destroy();
 	this->cubeMemory.destroy();
+}
+
+void ym::CubeMap::setTexture(Texture* texturePtr)
+{
+	this->cubemapTexture = texturePtr;
 }
 
 ym::Texture* ym::CubeMap::getTexture()

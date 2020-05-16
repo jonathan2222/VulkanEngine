@@ -91,6 +91,11 @@ void ym::Renderer::setActiveCamera(Camera* camera)
 	//this->terrainRenderer.setActiveCamera(camera);
 }
 
+ym::Texture* ym::Renderer::convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, CubeMap* cubeMap)
+{
+	return this->cubeMapRenderer.convertEquirectangularToCubemap(sideSize, texture, cubeMap);
+}
+
 bool ym::Renderer::begin()
 {
 	// Check if models have loaded.

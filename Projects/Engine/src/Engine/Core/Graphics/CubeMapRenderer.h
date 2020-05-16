@@ -25,6 +25,8 @@ namespace ym
 		void init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass, RenderInheritanceData* renderInheritanceData);
 		void destroy();
 
+		Texture* convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, CubeMap* cubeMap);
+
 		/*
 			Prepare to draw.
 		*/

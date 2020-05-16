@@ -16,9 +16,19 @@ namespace ym
 		CubeMap();
 		~CubeMap();
 
+		/*
+			Will load 6 textures and create a cubemap from them.
+		*/
 		void init(float scale, const std::string& texturePath);
+
+		/*
+			Only creates the vertices and a sampler.
+		*/
+		void init(float scale);
+
 		void destroy();
 
+		void setTexture(Texture* texturePtr);
 		Texture* getTexture();
 		Sampler* getSampler();
 		Buffer* getVertexBuffer();

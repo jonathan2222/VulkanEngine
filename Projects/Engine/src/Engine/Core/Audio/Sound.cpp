@@ -120,6 +120,21 @@ void ym::Sound::stop()
 	}
 }
 
+void ym::Sound::setName(const std::string& name)
+{
+	this->name = name;
+}
+
+std::string ym::Sound::getName() const
+{
+	return this->name;
+}
+
+glm::vec3 ym::Sound::getPosition() const
+{
+	return this->userData->soundData.sourcePos;
+}
+
 float ym::Sound::getVolume() const
 {
 	return this->volume;
@@ -138,6 +153,16 @@ void ym::Sound::setVolume(float volume)
 	{
 		userData->soundData.volume = volume;
 	}
+}
+
+void ym::Sound::setGroupVolume(float volume)
+{
+	this->userData->soundData.groupVolume = volume;
+}
+
+void ym::Sound::setMasterVolume(float volume)
+{
+	this->userData->soundData.masterVolume = volume;
 }
 
 void ym::Sound::setLoop(bool state)

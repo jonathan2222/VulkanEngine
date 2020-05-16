@@ -7,6 +7,7 @@
 #include "VulkanInstance.h"
 #include "Sampler.h"
 #include "Texture.h"
+#include "VulkanHelperfunctions.h"
 
 namespace ym
 {
@@ -51,7 +52,7 @@ namespace ym
 		{
 			Buffer stagingBuffer;
 			Memory stagingMemory;
-			VkDeviceSize dataSize = (VkDeviceSize)SIZE_OF_ARR(texture->textureDesc.data);
+			VkDeviceSize dataSize = getSizeFromFormat(texture->textureDesc.format)*texture->textureDesc.width*texture->textureDesc.height;
 			stagingBuffer.init(dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, { VulkanInstance::get()->getGraphicsQueue().queueIndex });
 			stagingMemory.bindBuffer(&stagingBuffer);
 			stagingMemory.init(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -112,7 +113,7 @@ namespace ym
 		static void transferCubeMapData(Texture* texture, CommandPool* transferCommandPool)
 		{
 			const uint32_t numFaces = 6;
-			VkDeviceSize size = (VkDeviceSize)texture->textureDesc.width * (VkDeviceSize)texture->textureDesc.height * 4;
+			VkDeviceSize size = (VkDeviceSize)texture->textureDesc.width * (VkDeviceSize)texture->textureDesc.height * getSizeFromFormat(texture->textureDesc.format);
 
 			Buffer stagingBuffer;
 			Memory stagingMemory;
@@ -121,12 +122,7 @@ namespace ym
 			stagingMemory.init(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 			// Transfer the data to the buffer.
-			for (uint32_t f = 0; f < numFaces; f++)
-			{
-				// This can be made in one line, instead of in a for loop!!
-				uint8_t* img = texture->textureDesc.data + f*size;
-				stagingMemory.directTransfer(&stagingBuffer, (void*)img, size, (Offset)f * size);
-			}
+			stagingMemory.directTransfer(&stagingBuffer, texture->textureDesc.data, size * numFaces, 0);
 
 			// Setup buffer copy regions for each face including all of its miplevels. In this case only 1 miplevel is used.
 			std::vector<VkBufferImageCopy> bufferCopyRegions;

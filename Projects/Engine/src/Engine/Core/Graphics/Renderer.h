@@ -37,6 +37,8 @@ namespace ym
 
 		void setActiveCamera(Camera* camera);
 
+		Texture* convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, CubeMap* cubeMap);
+
 		/*
 			Begin frame. Will return true if succeeded, false if the swap chain needs to be recreated.
 		*/

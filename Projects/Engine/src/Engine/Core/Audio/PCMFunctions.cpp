@@ -46,7 +46,9 @@ int ym::PCM::paCallbackPCM(const void* inputBuffer, void* outputBuffer, unsigned
 			shouldContinue = shouldContinue && (abs(rightEar) > 0.00000001f ? true : shouldContinue);
 
 		}
-		applyToEar(data, &outputData, { leftEar * data->soundData.volume, rightEar * data->soundData.volume });
+
+		float volume = data->soundData.volume * data->soundData.groupVolume * data->soundData.masterVolume;
+		applyToEar(data, &outputData, { leftEar * volume, rightEar * volume });
 	}
 
 	return finish(data, framesRead, framesPerBuffer, shouldContinue);

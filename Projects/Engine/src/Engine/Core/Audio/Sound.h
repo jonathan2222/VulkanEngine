@@ -21,9 +21,15 @@ namespace ym
 		void unpause();
 		void stop();
 
+		void setName(const std::string& name);
+		std::string getName() const;
+		glm::vec3 getPosition() const;
+
 		float getVolume() const;
 		void applyVolume(float volumeChange);
 		void setVolume(float volume);
+		void setGroupVolume(float volume);
+		void setMasterVolume(float volume);
 		void setLoop(bool state);
 
 		void addFilter(Filter* filter);
@@ -54,5 +60,6 @@ namespace ym
 		PortAudio* portAudioPtr;
 		PCM::UserData* userData;
 		bool isStreamOn;
+		std::string name{"NO_NAME"};
 	};
 }

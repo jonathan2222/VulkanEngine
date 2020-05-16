@@ -33,6 +33,7 @@ private:
 	ym::Camera camera;
 
 	ym::CubeMap cubeMap;
+	ym::CubeMap cubeMapHDR;
 
 	ym::Sound* cameraLockSound;
 	ym::Sound* cameraUnlockSound;

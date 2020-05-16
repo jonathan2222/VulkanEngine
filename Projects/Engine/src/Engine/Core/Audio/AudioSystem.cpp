@@ -10,6 +10,14 @@
 
 #include "PCMFunctions.h"
 
+// For debug settings.
+#include "Utils/Imgui/imgui.h"
+#include "Engine/Core/Audio/Filters/DistanceFilter.h"
+#include "Engine/Core/Audio/Filters/EchoFilter.h"
+#include "Engine/Core/Audio/Filters/LowpassFilter.h"
+
+#include "Utils/Utils.h"
+
 ym::AudioSystem::AudioSystem() : portAudio(nullptr)
 {
 }
@@ -60,6 +68,21 @@ void ym::AudioSystem::update()
 	
 }
 
+void ym::AudioSystem::setMasterVolume(float volume)
+{
+	this->masterVolume = volume;
+}
+
+void ym::AudioSystem::setStreamVolume(float volume)
+{
+	this->streamVolume = volume;
+}
+
+void ym::AudioSystem::setEffectsVolume(float volume)
+{
+	this->effectsVolume = volume;
+}
+
 ym::Sound* ym::AudioSystem::createSound(const std::string& filePath)
 {
 	Sound* sound = new Sound(this->portAudio);
@@ -68,6 +91,7 @@ ym::Sound* ym::AudioSystem::createSound(const std::string& filePath)
 	userData->sampleFormat = paFloat32;
 	loadEffectFile(&userData->handle, filePath, userData->sampleFormat);
 	sound->init(userData);
+	sound->setName(Utils::getNameFromPath(filePath));
 	this->sounds.push_back(sound);
 	return sound;
 }
@@ -88,6 +112,7 @@ ym::Sound* ym::AudioSystem::createStream(const std::string& filePath)
 	userData->soundData.loop = true;
 	loadStreamFile(&userData->handle, filePath);
 	stream->init(userData);
+	stream->setName(Utils::getNameFromPath(filePath));
 	this->soundStreams.push_back(stream);
 	return stream;
 }
@@ -167,5 +192,80 @@ void ym::AudioSystem::loadEffectFile(SoundHandle* soundHandle, const std::string
 	default:
 		YM_ASSERT(false, "Failed to load sound {}, unrecognized file type!", filePath.c_str());
 		break;
+	}
+}
+
+void ym::AudioSystem::drawAudioSettings()
+{
+	{
+		static bool my_tool_active = true;
+		ImGui::Begin("Audio settings", &my_tool_active, ImGuiWindowFlags_MenuBar);
+		ImGui::SliderFloat("Master volume", &this->masterVolume, 0.0f, 1.f, "%.001f");
+
+		if (ImGui::CollapsingHeader("Effects"))
+		{
+			ImGui::SliderFloat("Effects volume", &this->effectsVolume, 0.0f, 1.f, "%.001f");
+			for (Sound* sound : this->sounds)
+			{
+				sound->setGroupVolume(this->effectsVolume);
+				sound->setMasterVolume(this->masterVolume);
+				drawSoundSettings(sound);
+			}
+		}
+
+		if (ImGui::CollapsingHeader("Streams"))
+		{
+			ImGui::SliderFloat("Streams Volume", &this->streamVolume, 0.0f, 1.f, "%.001f");
+			for (Sound* sound : this->soundStreams)
+			{
+				sound->setGroupVolume(this->streamVolume);
+				sound->setMasterVolume(this->masterVolume);
+				drawSoundSettings(sound);
+			}
+		}
+
+		ImGui::End();
+	}
+}
+
+void ym::AudioSystem::drawSoundSettings(Sound* sound)
+{
+	if (ImGui::TreeNode(sound->getName().c_str()))
+	{
+		float volume = sound->getVolume();
+		ImGui::SliderFloat("Volume", &volume, 0.0f, 1.f, "%.001f");
+		sound->setVolume(volume);
+
+		auto& filters = sound->getFilters();
+		for (ym::Filter* filter : filters)
+		{
+			if (ImGui::CollapsingHeader(filter->getName().c_str()))
+			{
+				if (ym::LowpassFilter * lowpassF = dynamic_cast<ym::LowpassFilter*>(filter))
+				{
+					float fc = lowpassF->getCutoffFrequency();
+					ImGui::SliderFloat("Cutoff frequency", &fc, 0.0f, lowpassF->getSampleRate() * 0.5f, "%.0f Hz");
+					lowpassF->setCutoffFrequency(fc);
+				}
+
+				if (ym::EchoFilter * echoF = dynamic_cast<ym::EchoFilter*>(filter))
+				{
+					float gain = echoF->getGain();
+					ImGui::SliderFloat("Gain", &gain, 0.0f, 1.f, "%.3f");
+					echoF->setGain(gain);
+					float delay = echoF->getDelay();
+					ImGui::SliderFloat("Delay", &delay, 0.0f, (float)MAX_CIRCULAR_BUFFER_SIZE, "%.3f sec");
+					echoF->setDelay(delay);
+				}
+
+				if (ym::DistanceFilter * distF = dynamic_cast<ym::DistanceFilter*>(filter))
+				{
+					ImGui::Text("Uses factor = 1/distance^2 for sound attenuation.");
+					glm::vec3 pos = sound->getPosition();
+					ImGui::Text("Source position: (%f, %f, %f)", pos.x, pos.y, pos.z);
+				}
+			}
+		}
+		ImGui::TreePop();
 	}
 }
