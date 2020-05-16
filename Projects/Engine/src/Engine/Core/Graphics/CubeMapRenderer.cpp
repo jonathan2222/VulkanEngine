@@ -92,14 +92,14 @@ ym::Texture* ym::CubeMapRenderer::convertEquirectangularToCubemap(uint32_t sideS
 	textureDesc.height = extent.height;
 	textureDesc.format = texture->textureDesc.format;
 	textureDesc.data = nullptr;
-	Texture* newTexture = Factory::createCubeMapTexture(textureDesc, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
+	Texture* newTexture = Factory::createCubeMapTexture(textureDesc, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
 	textureDesc = {};
 	textureDesc.width = sideSize;
 	textureDesc.height = sideSize;
 	textureDesc.format = texture->textureDesc.format;
 	textureDesc.data = nullptr;
-	Texture* image = Factory::createTexture(textureDesc, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
+	Texture* image = Factory::createTexture(textureDesc, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
 	CommandPool* commandPool = &LayerManager::get()->getCommandPools()->graphicsPool;
 	CommandBuffer* commandBuffer = commandPool->beginSingleTimeCommand();
@@ -532,7 +532,7 @@ void ym::CubeMapRenderer::addModelToBatch(uint32_t imageIndex, DrawData& drawDat
 		this->drawBatch.resize(this->swapChain->getNumImages());
 
 	uint32_t instanceCount = (uint32_t)drawData.transforms.size();
-	uint64_t id = getUniqueId(drawData.model->getUniqueId(), instanceCount);
+	uint64_t id = getUniqueId((uint32_t)drawData.model->getUniqueId(), instanceCount);
 	auto& it = this->drawBatch[imageIndex].find(id);
 	if (it == this->drawBatch[imageIndex].end())
 	{

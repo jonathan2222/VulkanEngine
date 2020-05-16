@@ -239,7 +239,7 @@ void ym::Renderer::createDepthTexture()
 	textureDesc.height = this->swapChain.getExtent().height;
 	textureDesc.format = findDepthFormat(VulkanInstance::get()->getPhysicalDevice());
 	textureDesc.data = nullptr;
-	this->depthTexture = ym::Factory::createTexture(textureDesc, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
+	this->depthTexture = ym::Factory::createTexture(textureDesc, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 
 	// Transistion image
 	Image::TransistionDesc desc;

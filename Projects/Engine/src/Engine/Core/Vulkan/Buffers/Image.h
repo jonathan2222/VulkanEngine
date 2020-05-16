@@ -25,17 +25,20 @@ namespace ym
 		Image();
 		~Image();
 
-		void init(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, const std::vector<uint32_t>& queueFamilyIndices, VkImageCreateFlags flags, uint32_t arrayLayers);
+		void init(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, const std::vector<uint32_t>& queueFamilyIndices, VkImageCreateFlags flags, uint32_t arrayLayers, uint32_t mipLevels);
 		void destroy();
 
 		void transistionLayout(TransistionDesc& desc);
 		void setLayout(CommandBuffer* cmdBuff, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout);
 		void setLayout(CommandBuffer* cmdBuff, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkImageSubresourceRange subresourceRange);
+		// TODO: REMOVE THIS!!
+		void setLayout(VkImageLayout newImageLayout);
 		void copyBufferToImage(Buffer* buffer, CommandPool* pool);
 		void copyBufferToImage(Buffer* buffer, CommandPool* pool, std::vector<VkBufferImageCopy> regions);
 
 		VkImage getImage() const;
 		VkImageLayout getLayout() const { return this->layout; }
+		uint32_t getMipLevels() const;
 
 	private:
 		VkImage image;
@@ -43,5 +46,6 @@ namespace ym
 
 		uint32_t width;
 		uint32_t height;
+		uint32_t mipLevels;
 	};
 }

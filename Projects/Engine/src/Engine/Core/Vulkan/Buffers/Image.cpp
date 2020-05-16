@@ -7,7 +7,7 @@
 
 namespace ym
 {
-	Image::Image() : width(0), height(0), image(VK_NULL_HANDLE), layout(VK_IMAGE_LAYOUT_UNDEFINED)
+	Image::Image() : width(0), height(0), mipLevels(0), image(VK_NULL_HANDLE), layout(VK_IMAGE_LAYOUT_UNDEFINED)
 	{
 	}
 
@@ -15,10 +15,11 @@ namespace ym
 	{
 	}
 
-	void Image::init(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, const std::vector<uint32_t>& queueFamilyIndices, VkImageCreateFlags flags, uint32_t arrayLayers)
+	void Image::init(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, const std::vector<uint32_t>& queueFamilyIndices, VkImageCreateFlags flags, uint32_t arrayLayers, uint32_t mipLevels)
 	{
 		this->width = width;
 		this->height = height;
+		this->mipLevels = mipLevels;
 
 		VkImageCreateInfo imageInfo = {};
 		imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -26,7 +27,7 @@ namespace ym
 		imageInfo.extent.width = width;
 		imageInfo.extent.height = height;
 		imageInfo.extent.depth = 1;
-		imageInfo.mipLevels = 1;
+		imageInfo.mipLevels = mipLevels;
 		imageInfo.arrayLayers = arrayLayers;
 		imageInfo.format = format;
 		//If you want to be able to directly access texels in the memory of the image, then you must use VK_IMAGE_TILING_LINEAR
@@ -80,7 +81,7 @@ namespace ym
 		}
 
 		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = 1;
+		barrier.subresourceRange.levelCount = this->mipLevels;
 		barrier.subresourceRange.baseArrayLayer = 0;
 		barrier.subresourceRange.layerCount = desc.layerCount;
 
@@ -97,6 +98,13 @@ namespace ym
 			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 			destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 		}
+		else if (desc.oldLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && desc.newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
 		else if (desc.oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && desc.newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
 			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -111,6 +119,13 @@ namespace ym
 			sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 			destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 		}
+		else if (desc.oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && desc.newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+			sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		}
 		else {
 			YM_ASSERT(false, "Unsupported layout transistion!");
 		}
@@ -122,18 +137,26 @@ namespace ym
 
 	void Image::setLayout(CommandBuffer* cmdBuff, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout)
 	{
-		Img::setImageLayout(cmdBuff->getCommandBuffer(), this->image, aspectMask, oldImageLayout, newImageLayout);
+		YM_LOG_ERROR("Transition of layout for multiple mipmaps is not implemented!");
+		Img::setImageLayout(cmdBuff->getCommandBuffer(), this->image, aspectMask, oldImageLayout, newImageLayout, this->mipLevels);
 		this->layout = newImageLayout;
 	}
 
 	void Image::setLayout(CommandBuffer* cmdBuff, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkImageSubresourceRange subresourceRange)
 	{
+		YM_LOG_ERROR("Transition of layout for multiple mipmaps is not implemented!");
 		Img::setImageLayout(cmdBuff->getCommandBuffer(), this->image, oldImageLayout, newImageLayout, subresourceRange);
+		this->layout = newImageLayout;
+	}
+
+	void Image::setLayout(VkImageLayout newImageLayout)
+	{
 		this->layout = newImageLayout;
 	}
 
 	void Image::copyBufferToImage(Buffer* buffer, CommandPool* pool)
 	{
+		YM_LOG_ERROR("copyBufferToImage with a image of multiple mipmaps is not implemented!");
 		VkBufferImageCopy region = {};
 		region.bufferOffset = 0;
 		region.bufferRowLength = 0;
@@ -158,5 +181,9 @@ namespace ym
 	VkImage Image::getImage() const
 	{
 		return this->image;
+	}
+	uint32_t Image::getMipLevels() const
+	{
+		return this->mipLevels;
 	}
 }

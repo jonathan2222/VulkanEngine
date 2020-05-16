@@ -289,6 +289,7 @@ namespace ym
 			VkImageAspectFlags aspectMask,
 			VkImageLayout oldImageLayout,
 			VkImageLayout newImageLayout,
+			uint32_t mipLevels,
 			VkPipelineStageFlags srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 			VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)
 		{
@@ -296,7 +297,7 @@ namespace ym
 			VkImageSubresourceRange subresourceRange = {};
 			subresourceRange.aspectMask = aspectMask;
 			subresourceRange.baseMipLevel = 0;
-			subresourceRange.levelCount = 1;
+			subresourceRange.levelCount = mipLevels;
 			subresourceRange.layerCount = 1;
 			setImageLayout(cmdbuffer, image, oldImageLayout, newImageLayout, subresourceRange, srcStageMask, dstStageMask);
 		}

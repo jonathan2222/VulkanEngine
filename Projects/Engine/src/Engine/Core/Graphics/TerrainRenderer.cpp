@@ -576,7 +576,7 @@ void ym::TerrainRenderer::createIndirectDrawBuffer(DrawData& drawData)
 
 	for (size_t i = 0; i < indirectData.size(); i++) {
 		indirectData[i].instanceCount = 1;
-		indirectData[i].firstInstance = i;
+		indirectData[i].firstInstance = (uint32_t)i;
 	}
 
 	stagingMemory.directTransfer(&stagingBuffer, indirectData.data(), indirectData.size(), 0);

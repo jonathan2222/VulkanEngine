@@ -141,6 +141,7 @@ namespace ym
 			bufferCopyRegion.bufferOffset = textureIndex * size;
 			bufferCopyRegions.push_back(bufferCopyRegion);
 
+
 			// Transfer data to texture memory.
 			Image::TransistionDesc desc;
 			desc.format = texture.textureDesc.format;
@@ -149,13 +150,24 @@ namespace ym
 			desc.pool = transferCommandPool;
 			desc.layerCount = 1;
 			
+
 			texture.image.transistionLayout(desc);
 			texture.image.copyBufferToImage(&stagingBuffers->imageBuffer, transferCommandPool, bufferCopyRegions);
-			desc.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			desc.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			texture.image.transistionLayout(desc);
+
+			uint32_t mipLevels = texture.image.getMipLevels();
+			if (mipLevels == 1)
+			{
+				desc.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+				desc.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				texture.image.transistionLayout(desc);
+			}
+			else
+			{
+				Factory::generateMipmaps(&texture, mipLevels);
+			}
 		}
 		model->imageData.clear();
+
 
 		// Transfer data to buffers
 		uint32_t indicesSize = (uint32_t)(model->indices.size() * sizeof(uint32_t));
@@ -213,7 +225,7 @@ namespace ym
 		textureDesc.height = 1;
 		textureDesc.format = VK_FORMAT_R8G8B8A8_UNORM;
 		textureDesc.data = &pixel[0];
-		defaultData.texture = ym::Factory::createTexture(textureDesc, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
+		defaultData.texture = ym::Factory::createTexture(textureDesc, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 		ym::Factory::transferData(defaultData.texture, transferCommandPool);
 
 		// Sampler
@@ -251,8 +263,9 @@ namespace ym
 			
 			loadImageData(folderPath, image, gltfModel, model.imageData[textureIndex]);
 
+			uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(image.width, image.height)))) + 1;
 			Texture& texture = model.textures[textureIndex];
-			texture.image.init(image.width, image.height, format, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, { VulkanInstance::get()->getGraphicsQueue().queueIndex }, 0, 1);
+			texture.image.init(image.width, image.height, format, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, { VulkanInstance::get()->getGraphicsQueue().queueIndex }, 0, 1, mipLevels);
 			model.imageMemory.bindTexture(&texture);
 			texture.textureDesc.width = (uint32_t)image.width;
 			texture.textureDesc.height = (uint32_t)image.height;
@@ -261,7 +274,7 @@ namespace ym
 		model.imageMemory.init(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		for (Texture& texture : model.textures)
 		{
-			texture.imageView.init(texture.image.getImage(), VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+			texture.imageView.init(texture.image.getImage(), VK_IMAGE_VIEW_TYPE_2D, format, VK_IMAGE_ASPECT_COLOR_BIT, 1, texture.image.getMipLevels());
 			texture.descriptor.imageView = texture.imageView.getImageView();
 			texture.descriptor.imageLayout = texture.image.getLayout();
 		}

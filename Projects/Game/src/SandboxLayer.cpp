@@ -102,7 +102,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	// Test HDR
 	int widthHDR = 0, heightHDR = 0, nrComponentsHDR = 0;
 	std::string hdrPath = YM_ASSETS_FILE_PATH + "/Textures/HDRs/spruit_sunrise_2k.hdr";
-	stbi_set_flip_vertically_on_load(true);
+	//stbi_set_flip_vertically_on_load(true);
 	float* dataHDR = stbi_loadf(hdrPath.c_str(), &widthHDR, &heightHDR, &nrComponentsHDR, 4);
 	if (dataHDR)
 	{
@@ -111,14 +111,14 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 		textureDesc.height = (uint32_t)heightHDR;
 		textureDesc.format = VK_FORMAT_R32G32B32A32_SFLOAT;
 		textureDesc.data = (void*)dataHDR;
-		ym::Texture* texture = ym::Factory::createTexture(textureDesc, VK_IMAGE_USAGE_SAMPLED_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
+		ym::Texture* texture = ym::Factory::createTexture(textureDesc, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 		ym::CommandPools* commandPools = ym::LayerManager::get()->getCommandPools();
 		ym::Factory::transferData(texture, &commandPools->graphicsPool);
 		stbi_image_free(dataHDR);
 
 		ym::CubeMap temp;
 		temp.init(1.f);
-		ym::Texture* newTexture = renderer->convertEquirectangularToCubemap(512, texture, &temp);
+		ym::Texture* newTexture = renderer->convertEquirectangularToCubemap(1024, texture, &temp);
 		temp.destroy();
 		texture->destroy();
 		//this->cubeMapHDR.init(100.f);
@@ -198,10 +198,10 @@ void SandboxLayer::onUpdate(float dt)
 
 	// Add tree objects when pressing E
 	static int32_t maxTrees = 15;
-	static float r = maxTrees;
+	static float r = (float)maxTrees;
 	keyState = input->getKeyState(ym::Key::E);
 	if (keyState == ym::KeyState::FIRST_RELEASED)
-		r = ++maxTrees;
+		r = (float)(++maxTrees);
 	for (int32_t i = 0; i < maxTrees; i++)
 	{
 		float angle = (float)i / (float)maxTrees * 2 * glm::pi<float>();

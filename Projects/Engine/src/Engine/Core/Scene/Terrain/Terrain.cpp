@@ -83,8 +83,8 @@ glm::ivec2 ym::Terrain::getRegionFromPos(const glm::vec3& pos, int32_t regionSiz
 
 	// Calculate region index from position
 	glm::vec2 index(0);
-	index.x = static_cast<int>(xDistance / regionWorldSize);
-	index.y = static_cast<int>(zDistance / regionWorldSize);
+	index.x = (float)static_cast<int>(xDistance / regionWorldSize);
+	index.y = (float)static_cast<int>(zDistance / regionWorldSize);
 
 	return index;
 }
@@ -180,8 +180,8 @@ void ym::Terrain::generateVertices(uint32_t dataWidth, uint32_t dataHeight, uint
 		for (int32_t x = 0; x < this->width; x++)
 		{
 			float height = 0;
-			if (z < dataHeight && x < dataWidth)
-				height = this->desc.minZ + ((float)data[x + z * dataWidth] / maxValue) * zDist;
+			if (z < (int32_t)dataHeight && x < (int32_t)dataWidth)
+				height = this->desc.minZ + ((float)data[x + z * (int32_t)dataWidth] / maxValue) * zDist;
 
 			float xPos = this->desc.origin.x + x * this->desc.vertDist;
 			float zPos = this->desc.origin.z + z * this->desc.vertDist;

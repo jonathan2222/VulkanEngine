@@ -59,7 +59,7 @@ void ym::CubeMap::init(float scale, const std::string& texturePath)
 		textureDesc.height = height;
 		textureDesc.format = format;
 		textureDesc.data = (void*)facesData.data();
-		this->cubemapTexture = Factory::createCubeMapTexture(textureDesc, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
+		this->cubemapTexture = Factory::createCubeMapTexture(textureDesc, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 		Factory::transferCubeMapData(this->cubemapTexture, pool);
 		for (stbi_uc* img : imgs) delete img;
 		imgs.clear();

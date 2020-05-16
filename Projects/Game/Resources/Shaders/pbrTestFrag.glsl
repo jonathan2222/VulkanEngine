@@ -109,7 +109,7 @@ vec3 getNormal()
 // See our README.md on Environment Maps [3] for additional discussion.
 vec3 getIBLContribution(PBRInfo pbrInputs, vec3 n, vec3 reflection)
 {
-/*	float lod = (pbrInputs.perceptualRoughness * uboParams.prefilteredCubeMipLevels);
+	/*float lod = (pbrInputs.perceptualRoughness * uboParams.prefilteredCubeMipLevels);
 	// retrieve a scale and bias to F0. See [1], Figure 3
 	vec3 brdf = (texture(samplerBRDFLUT, vec2(pbrInputs.NdotV, 1.0 - pbrInputs.perceptualRoughness))).rgb;
 	vec3 diffuseLight = SRGBtoLINEAR(tonemap(texture(samplerIrradiance, n))).rgb;
@@ -123,7 +123,7 @@ vec3 getIBLContribution(PBRInfo pbrInputs, vec3 n, vec3 reflection)
 	// For presentation, this allows us to disable IBL terms
 	diffuse *= uboParams.scaleIBLAmbient;
 	specular *= uboParams.scaleIBLAmbient;
-*/
+	*/
 	return vec3(0.f);//diffuse + specular;
 }
 

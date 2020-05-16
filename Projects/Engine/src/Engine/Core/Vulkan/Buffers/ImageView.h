@@ -10,7 +10,7 @@ namespace ym
 		ImageView();
 		~ImageView();
 
-		void init(VkImage image, VkImageViewType type, VkFormat format, VkImageAspectFlags aspectMask, uint32_t layerCount);
+		void init(VkImage image, VkImageViewType type, VkFormat format, VkImageAspectFlags aspectMask, uint32_t layerCount, uint32_t mipLevels);
 		void destroy();
 
 		VkImageView getImageView() const { return this->imageView; }
