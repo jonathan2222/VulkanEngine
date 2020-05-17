@@ -91,9 +91,9 @@ void ym::Renderer::setActiveCamera(Camera* camera)
 	//this->terrainRenderer.setActiveCamera(camera);
 }
 
-ym::Texture* ym::Renderer::convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, CubeMap* cubeMap)
+ym::Texture* ym::Renderer::convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, CubeMap* cubeMap, uint32_t desiredMipLevels)
 {
-	return this->cubeMapRenderer.convertEquirectangularToCubemap(sideSize, texture, cubeMap);
+	return this->cubeMapRenderer.convertEquirectangularToCubemap(sideSize, texture, cubeMap, desiredMipLevels);
 }
 
 bool ym::Renderer::begin()

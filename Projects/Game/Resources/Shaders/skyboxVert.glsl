@@ -18,11 +18,8 @@ layout(set=2, binding = 0) readonly buffer TransformData
 layout(location = 0) out vec3 fragUv;
 
 void main() {
-    vec4 worldPosition = modelTransform[gl_InstanceIndex] * vec4(position.xyz, 1.0);
-    mat4 newView = scene.view;
-    newView[3][0] = 0.0;
-    newView[3][1] = 0.0;
-    newView[3][2] = 0.0;
-    gl_Position = scene.proj * newView * worldPosition;
+    mat4 newView = mat4(mat3(scene.view)); // Remove translation.
+    vec4 clipPos = scene.proj * newView * modelTransform[gl_InstanceIndex] * vec4(position.xyz, 1.0);
+    gl_Position = clipPos.xyww; // Set it to max depth => z = 1.
     fragUv = position.xyz;
 }

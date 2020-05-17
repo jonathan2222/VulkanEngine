@@ -12,7 +12,7 @@ namespace ym
 	{
 	}
 
-	void Sampler::init(VkFilter minFilter, VkFilter magFilter, VkSamplerAddressMode uWrap, VkSamplerAddressMode vWrap)
+	void Sampler::init(VkFilter minFilter, VkFilter magFilter, VkSamplerAddressMode uWrap, VkSamplerAddressMode vWrap, uint32_t mipLevels)
 	{
 		VkSamplerCreateInfo samplerInfo = {};
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -31,9 +31,9 @@ namespace ym
 		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 
 		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		samplerInfo.mipLodBias = 0.0f;
-		samplerInfo.minLod = 0.0f;
-		samplerInfo.maxLod = 0.0f;
+		samplerInfo.mipLodBias = 0.0f; // Optional
+		samplerInfo.minLod = 0.0f; // Optional
+		samplerInfo.maxLod = mipLevels;
 
 		VULKAN_CHECK(vkCreateSampler(VulkanInstance::get()->getLogicalDevice(), &samplerInfo, nullptr, &this->sampler), "Failed to create texture sampler!")
 	}

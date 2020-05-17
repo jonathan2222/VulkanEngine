@@ -22,13 +22,22 @@ namespace ym
 		void init(float scale, const std::string& texturePath);
 
 		/*
-			Only creates the vertices and a sampler.
+			Only creates the vertices.
 		*/
 		void init(float scale);
 
 		void destroy();
 
+		/*
+			Set the texture and creates a sampler.
+		*/
 		void setTexture(Texture* texturePtr);
+
+		/*
+			Set the texture and creates a sampler with specified mipLevels.
+		*/
+		void setTexture(Texture* texturePtr, uint32_t mipLevels);
+
 		Texture* getTexture();
 		Sampler* getSampler();
 		Buffer* getVertexBuffer();

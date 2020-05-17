@@ -25,7 +25,11 @@ namespace ym
 		void init(SwapChain* swapChain, uint32_t threadID, RenderPass* renderPass, RenderInheritanceData* renderInheritanceData);
 		void destroy();
 
-		Texture* convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, CubeMap* cubeMap);
+		/*
+			Convert a texture from equirectangular form to a cubemap form with the desired mip levels.
+			If desiredMipLevels is 0, the final texture will use as many mip levels as it can.
+		*/
+		Texture* convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, CubeMap* cubeMap, uint32_t desiredMipLevels);
 
 		/*
 			Prepare to draw.

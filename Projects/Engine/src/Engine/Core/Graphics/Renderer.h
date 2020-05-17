@@ -37,7 +37,7 @@ namespace ym
 
 		void setActiveCamera(Camera* camera);
 
-		Texture* convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, CubeMap* cubeMap);
+		Texture* convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, CubeMap* cubeMap, uint32_t desiredMipLevels);
 
 		/*
 			Begin frame. Will return true if succeeded, false if the swap chain needs to be recreated.

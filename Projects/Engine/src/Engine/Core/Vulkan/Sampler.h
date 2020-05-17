@@ -10,7 +10,7 @@ namespace ym
 		Sampler();
 		~Sampler();
 
-		void init(VkFilter minFilter, VkFilter magFilter, VkSamplerAddressMode uWrap, VkSamplerAddressMode vWrap);
+		void init(VkFilter minFilter, VkFilter magFilter, VkSamplerAddressMode uWrap, VkSamplerAddressMode vWrap, uint32_t mipLevels);
 		void destroy();
 
 		VkSampler getSampler() const { return this->sampler; }

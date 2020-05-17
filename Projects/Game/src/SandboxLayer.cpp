@@ -117,13 +117,13 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 
 		ym::CubeMap temp;
 		temp.init(1.f);
-		ym::Texture* newTexture = renderer->convertEquirectangularToCubemap(1024, texture, &temp);
+		ym::Texture* newTexture = renderer->convertEquirectangularToCubemap(1024, texture, &temp, 1);
 		temp.destroy();
 		texture->destroy();
 		SAFE_DELETE(texture);
 		//this->cubeMapHDR.init(100.f);
+		this->cubeMap.setTexture(newTexture, 1);
 		ym::Factory::applyTextureDescriptor(newTexture, this->cubeMap.getSampler());
-		this->cubeMap.setTexture(newTexture);
 	}
 	else
 	{

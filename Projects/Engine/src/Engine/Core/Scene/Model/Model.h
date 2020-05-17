@@ -78,6 +78,7 @@ namespace ym
 		Memory imageMemory;
 
 		std::vector<Sampler> samplers;
+		std::unordered_map<uint32_t, uint32_t> samplerMipLevelMap;
 
 		bool hasMaterialMemory{ false };
 		Memory materialMemory;

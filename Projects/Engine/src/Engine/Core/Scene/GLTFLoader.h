@@ -95,7 +95,7 @@ namespace ym
 
 		static void loadTextures(std::string& folderPath, Model& model, tinygltf::Model& gltfModel, StagingBuffers* stagingBuffers);
 		static void loadImageData(std::string& folderPath, tinygltf::Image& image, tinygltf::Model& gltfModel, std::vector<uint8_t>& data);
-		static void loadSamplerData(tinygltf::Sampler& samplerGltf, Sampler& sampler);
+		static void loadSamplerData(tinygltf::Sampler& samplerGltf, Sampler& sampler, uint32_t mipLevels);
 		static void loadMaterials(Model& model, tinygltf::Model& gltfModel);
 		static void loadNode(Model& model, Model::Node* node, tinygltf::Model& gltfModel, tinygltf::Node& gltfNode, std::string indents);
 

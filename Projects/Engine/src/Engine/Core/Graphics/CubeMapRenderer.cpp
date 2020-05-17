@@ -81,7 +81,7 @@ void ym::CubeMapRenderer::destroy()
 			drawData.second.transformsBuffer.destroy();
 }
 
-ym::Texture* ym::CubeMapRenderer::convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, CubeMap* cubeMap)
+ym::Texture* ym::CubeMapRenderer::convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, CubeMap* cubeMap, uint32_t desiredMipLevels)
 {
 	VkExtent2D extent = {};
 	extent.width = sideSize;
@@ -92,7 +92,7 @@ ym::Texture* ym::CubeMapRenderer::convertEquirectangularToCubemap(uint32_t sideS
 	textureDesc.height = extent.height;
 	textureDesc.format = texture->textureDesc.format;
 	textureDesc.data = nullptr;
-	uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(textureDesc.width, textureDesc.height)))) + 1;
+	uint32_t mipLevels = desiredMipLevels == 0 ? static_cast<uint32_t>(std::floor(std::log2(std::max(textureDesc.width, textureDesc.height)))) + 1 : desiredMipLevels;
 	Texture* newTexture = Factory::createCubeMapTexture(textureDesc, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
 
 	textureDesc = {};
@@ -125,13 +125,16 @@ ym::Texture* ym::CubeMapRenderer::convertEquirectangularToCubemap(uint32_t sideS
 	descPool.addDescriptorLayout(descLayout, 1);
 	descPool.init(1);
 
+	Sampler sampler;
+	sampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, mipLevels);
+
 	VkDescriptorSet descriptorSet;
 	DescriptorSet modelSet;
 	modelSet.init(descLayout, &descriptorSet, &descPool);
 	VkDescriptorImageInfo imageInfo = {};
 	imageInfo.imageLayout = texture->image.getLayout();
 	imageInfo.imageView = texture->imageView.getImageView();
-	imageInfo.sampler = cubeMap->getSampler()->getSampler();
+	imageInfo.sampler = sampler.getSampler();
 	modelSet.setImageDesc(0, imageInfo);
 	modelSet.update();
 
@@ -338,6 +341,7 @@ ym::Texture* ym::CubeMapRenderer::convertEquirectangularToCubemap(uint32_t sideS
 	if (mipLevels > 1)
 		Factory::generateMipmaps(newTexture);
 
+	sampler.destroy();
 	vkDestroyFramebuffer(VulkanInstance::get()->getLogicalDevice(), frameBuffer, nullptr);
 	descLayout.destroy();
 	descPool.destroy();

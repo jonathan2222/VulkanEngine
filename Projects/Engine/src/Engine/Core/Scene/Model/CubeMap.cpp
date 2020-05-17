@@ -96,7 +96,7 @@ void ym::CubeMap::init(float scale, const std::string& texturePath)
 
 	// Create sampler
 	// TODO: This needs more control, should be compareOp=VK_COMPARE_OP_NEVER!
-	this->cubemapSampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+	this->cubemapSampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, this->cubemapTexture->image.getMipLevels());
 }
 
 void ym::CubeMap::init(float scale)
@@ -131,10 +131,6 @@ void ym::CubeMap::init(float scale)
 		stagingBuffer.destroy();
 		stagingMemory.destroy();
 	}
-
-	// Create sampler
-	// TODO: This needs more control, should be compareOp=VK_COMPARE_OP_NEVER!
-	this->cubemapSampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 }
 
 void ym::CubeMap::destroy()
@@ -153,6 +149,13 @@ void ym::CubeMap::destroy()
 void ym::CubeMap::setTexture(Texture* texturePtr)
 {
 	this->cubemapTexture = texturePtr;
+	this->cubemapSampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, this->cubemapTexture->image.getMipLevels());
+}
+
+void ym::CubeMap::setTexture(Texture* texturePtr, uint32_t mipLevels)
+{
+	this->cubemapTexture = texturePtr;
+	this->cubemapSampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, mipLevels);
 }
 
 ym::Texture* ym::CubeMap::getTexture()

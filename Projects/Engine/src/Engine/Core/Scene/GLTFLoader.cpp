@@ -230,7 +230,7 @@ namespace ym
 
 		// Sampler
 		Sampler& sampler = defaultData.sampler;
-		sampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+		sampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, 1);
 
 		// Set descriptor
 		ym::Factory::applyTextureDescriptor(defaultData.texture, &sampler);
@@ -258,6 +258,7 @@ namespace ym
 		VkFormat format = VK_FORMAT_R8G8B8A8_UNORM; // Assume all have the same layout. (loadImageData will force them to have 4 components, each being one byte)
 		for (size_t textureIndex = 0; textureIndex < gltfModel.textures.size(); textureIndex++)
 		{
+
 			tinygltf::Texture& textureGltf = gltfModel.textures[textureIndex];
 			tinygltf::Image& image = gltfModel.images[textureGltf.source];
 			
@@ -270,6 +271,15 @@ namespace ym
 			texture.textureDesc.width = (uint32_t)image.width;
 			texture.textureDesc.height = (uint32_t)image.height;
 			texture.textureDesc.format = format;
+
+			// Set mip level for the sampler, this might be wrong if textures with different mip levels uses the same sampler!
+			auto it = model.samplerMipLevelMap.find((uint32_t)gltfModel.textures[textureIndex].sampler);
+			uint32_t samplerMipLevel = 0;
+			if (it != model.samplerMipLevelMap.end())
+				samplerMipLevel = std::min(it->second, mipLevels);
+			else 
+				samplerMipLevel = mipLevels;
+			model.samplerMipLevelMap[(uint32_t)gltfModel.textures[textureIndex].sampler] = samplerMipLevel;
 		}
 		model.imageMemory.init(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		for (Texture& texture : model.textures)
@@ -292,7 +302,7 @@ namespace ym
 			tinygltf::Sampler& samplerGltf = gltfModel.samplers[samplerIndex];
 			
 			Sampler& sampler = model.samplers[samplerIndex];
-			loadSamplerData(samplerGltf, sampler);
+			loadSamplerData(samplerGltf, sampler, model.samplerMipLevelMap[samplerIndex]);
 		}
 		YM_LOG_INFO("  Loaded {} sampler(s).", gltfModel.samplers.size());
 	}
@@ -344,7 +354,7 @@ namespace ym
 		}
 	}
 
-	void GLTFLoader::loadSamplerData(tinygltf::Sampler & samplerGltf, Sampler & sampler)
+	void GLTFLoader::loadSamplerData(tinygltf::Sampler & samplerGltf, Sampler & sampler, uint32_t mipLevels)
 	{
 		VkFilter minFilter = VK_FILTER_NEAREST;
 		switch (samplerGltf.minFilter)
@@ -396,7 +406,7 @@ namespace ym
 			vWrap = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 			break;
 		}
-		sampler.init(minFilter, magFilter, uWrap, vWrap);
+		sampler.init(minFilter, magFilter, uWrap, vWrap, mipLevels);
 	}
 
 	void GLTFLoader::loadMaterials(Model & model, tinygltf::Model & gltfModel)
