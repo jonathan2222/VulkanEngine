@@ -14,9 +14,9 @@ layout(set=2, binding=2) uniform sampler2D normalTexture;
 layout(set=2, binding=3) uniform sampler2D occlusionTexture;
 layout(set=2, binding=4) uniform sampler2D emissiveTexture;
 
-layout(set=4, binding=0) uniform sampler2D environmentMap;
-layout(set=4, binding=0) uniform sampler2D irradianceMap;
-layout(set=4, binding=0) uniform sampler2D prefilteredEnvMap;
+layout(set=4, binding=0) uniform samplerCube environmentMap;
+layout(set=4, binding=1) uniform samplerCube irradianceMap;
+layout(set=4, binding=2) uniform samplerCube prefilteredEnvMap;
 
 layout(push_constant) uniform PushConstantsFrag
 {
@@ -98,11 +98,26 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
 float calculateAttenuation(vec3 p, vec3 lp)
 {
     // attenuation = 1 / distance^2
     vec3 pToLp = lp - p;  
     return 1./dot(pToLp, pToLp);
+}
+
+vec3 getAmbientFromEnvironment(vec3 N, vec3 V, vec3 F0, float roughness, vec3 albedo)
+{
+    vec3 Ks = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec3 Kd = 1.0 - Ks;
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 diffuse = irradiance * albedo;
+    vec3 ambient = (Kd * diffuse);
+    return ambient;
 }
 
 void main() {
@@ -164,7 +179,7 @@ void main() {
         Lo += (Kd * diffuseAlbedo / PI + specular) * radiance * NdotL;
     }
 
-    vec3 ambient = vec3(0.001) * diffuseAlbedo;
+    vec3 ambient = getAmbientFromEnvironment(N, V, F0, roughness, diffuseAlbedo);//vec3(0.001) * diffuseAlbedo;
     // Apply ambient occlusion term.
     const float u_OcclusionStrength = 1.0f;
 	if (occlusionTextureCoord > -1) {
