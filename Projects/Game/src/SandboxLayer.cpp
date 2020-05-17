@@ -89,8 +89,6 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	transformCrate = glm::translate(glm::mat4(1.0f), { -3.0f, 1.f, 2.f }) * transformCrate;
 	this->woodenCrateObject = ym::ObjectManager::get()->createGameObject(transformCrate, &this->woodenCrateModel);
 
-	// TODO: The scale can be changed to only set its distance to max in the shader instead!
-	this->cubeMap.init(100.f);//, YM_ASSETS_FILE_PATH + "/Textures/skybox/");
 
 	/*
 	glm::mat4 transformSponza(1.0f);
@@ -99,36 +97,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	this->sponzaObject = ym::ObjectManager::get()->createGameObject(transformSponza, &this->sponzaModel);
 	*/
 
-	// Test HDR
-	int widthHDR = 0, heightHDR = 0, nrComponentsHDR = 0;
-	std::string hdrPath = YM_ASSETS_FILE_PATH + "/Textures/HDRs/spruit_sunrise_2k.hdr";
-	float* dataHDR = stbi_loadf(hdrPath.c_str(), &widthHDR, &heightHDR, &nrComponentsHDR, 4);
-	if (dataHDR)
-	{
-		ym::TextureDesc textureDesc;
-		textureDesc.width = (uint32_t)widthHDR;
-		textureDesc.height = (uint32_t)heightHDR;
-		textureDesc.format = VK_FORMAT_R32G32B32A32_SFLOAT;
-		textureDesc.data = (void*)dataHDR;
-		ym::Texture* texture = ym::Factory::createTexture(textureDesc, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-		ym::CommandPools* commandPools = ym::LayerManager::get()->getCommandPools();
-		ym::Factory::transferData(texture, &commandPools->graphicsPool);
-		stbi_image_free(dataHDR);
-
-		ym::CubeMap temp;
-		temp.init(1.f);
-		ym::Texture* newTexture = renderer->convertEquirectangularToCubemap(1024, texture, &temp, 1);
-		temp.destroy();
-		texture->destroy();
-		SAFE_DELETE(texture);
-		//this->cubeMapHDR.init(100.f);
-		this->cubeMap.setTexture(newTexture, 1);
-		ym::Factory::applyTextureDescriptor(newTexture, this->cubeMap.getSampler());
-	}
-	else
-	{
-		YM_LOG_WARN("Could not load HDR! Path: {}", hdrPath.c_str());
-	}
+	this->environmentMap = renderer->getDefaultEnvironmentMap();
 }
 
 void SandboxLayer::onUpdate(float dt)
@@ -260,7 +229,7 @@ void SandboxLayer::onRender(ym::Renderer* renderer)
 	ym::AudioSystem::get()->drawAudioSettings();
 
 	glm::mat4 transform(1.f);
-	renderer->drawCubeMap(&this->cubeMap, transform);
+	renderer->drawSkybox(this->environmentMap);
 	renderer->drawAllModels(ym::ObjectManager::get());
 
 	//renderer->drawTerrain(&this->terrain, glm::mat4(1.0f));
@@ -283,7 +252,6 @@ void SandboxLayer::onQuit()
 	this->woodenCrateModel.destroy();
 	this->fortModel.destroy();
 	this->terrain2Model.destroy();
-	this->cubeMap.destroy();
 	this->terrain.destroy();
 	this->camera.destroy();
 }

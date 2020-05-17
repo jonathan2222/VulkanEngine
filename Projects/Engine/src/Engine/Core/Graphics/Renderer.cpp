@@ -10,6 +10,10 @@
 #include "Engine/Core/Scene/ObjectManager.h"
 #include "Engine/Core/Scene/GameObject.h"
 
+#include "Engine/Core/Graphics/IBLFunctions.h"
+
+#include <glTF/stb_image.h>
+
 ym::Renderer::Renderer()
 {
 	this->depthTexture = nullptr;
@@ -62,6 +66,17 @@ void ym::Renderer::destroy()
 {
 	GLTFLoader::destroy();
 
+	// Destroy environment maps and their smaplers.
+	this->environmentMap->destroy();
+	SAFE_DELETE(this->environmentMap);
+	this->prefilteredEnvironmentMap->destroy();
+	SAFE_DELETE(this->prefilteredEnvironmentMap);
+	this->irradianceMap->destroy();
+	SAFE_DELETE(this->irradianceMap);
+	this->irradianceSampler.destroy();
+	this->prefilteredSampler.destroy();
+	this->environmentSampler.destroy();
+
 	this->imgui.destroy();
 
 	// Destroy sub-renderers.
@@ -91,9 +106,9 @@ void ym::Renderer::setActiveCamera(Camera* camera)
 	//this->terrainRenderer.setActiveCamera(camera);
 }
 
-ym::Texture* ym::Renderer::convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, CubeMap* cubeMap, uint32_t desiredMipLevels)
+ym::Texture* ym::Renderer::getDefaultEnvironmentMap()
 {
-	return this->cubeMapRenderer.convertEquirectangularToCubemap(sideSize, texture, cubeMap, desiredMipLevels);
+	return this->environmentMap;
 }
 
 bool ym::Renderer::begin()
@@ -169,6 +184,11 @@ void ym::Renderer::drawAllModels(ObjectManager* objectManager)
 			drawModel(model, transforms);
 		}
 	}
+}
+
+void ym::Renderer::drawSkybox(Texture* texture)
+{
+	this->cubeMapRenderer.drawSkybox(this->imageIndex, texture);
 }
 
 void ym::Renderer::drawCubeMap(CubeMap* cubeMap, const glm::mat4& transform)
@@ -415,6 +435,8 @@ void ym::Renderer::submit()
 
 void ym::Renderer::initInheritenceData()
 {
+	std::string hdrPath = YM_ASSETS_FILE_PATH + "/Textures/HDRs/Arches_E_PineTree_3k.hdr";
+	createDefaultEnvironmentTextures(hdrPath);
 	setupSceneDescriptors();
 
 	// Create separate command buffers for each thread.
@@ -429,6 +451,8 @@ void ym::Renderer::initInheritenceData()
 void ym::Renderer::destroyInheritanceData()
 {
 	this->renderInheritanceData.sceneDescriptors.layout.destroy();
+	this->renderInheritanceData.sceneDescriptors.layoutEnv.destroy();
+
 	// Destory thread dependent data
 	for (ThreadData& td : this->renderInheritanceData.threadData)
 		td.destory();
@@ -443,19 +467,75 @@ void ym::Renderer::setupSceneDescriptors()
 	this->renderInheritanceData.sceneDescriptors.layout.add(new UBO(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)); // Camera
 	this->renderInheritanceData.sceneDescriptors.layout.init();
 
+	this->renderInheritanceData.sceneDescriptors.layoutEnv.add(new IMG(VK_SHADER_STAGE_FRAGMENT_BIT)); // Environment map (2D texture)
+	this->renderInheritanceData.sceneDescriptors.layoutEnv.add(new IMG(VK_SHADER_STAGE_FRAGMENT_BIT)); // Irradiance map (Cubemap)
+	this->renderInheritanceData.sceneDescriptors.layoutEnv.add(new IMG(VK_SHADER_STAGE_FRAGMENT_BIT)); // Prefiltered environment map (Cubemap)
+	this->renderInheritanceData.sceneDescriptors.layoutEnv.init();
+
 	// There is only one scene at a time => one descriptor set.
 	this->descriptorPool.addDescriptorLayout(this->renderInheritanceData.sceneDescriptors.layout, 1);
+	this->descriptorPool.addDescriptorLayout(this->renderInheritanceData.sceneDescriptors.layoutEnv, 1);
 
 	// The scene will be used in all frames => make copies of them.
 	uint32_t numFrames = this->swapChain.getNumImages();
 	descriptorPool.init(numFrames);
 
 	this->renderInheritanceData.sceneDescriptors.sets.resize(this->swapChain.getNumImages(), VK_NULL_HANDLE);
+	this->renderInheritanceData.sceneDescriptors.setsEnv.resize(this->swapChain.getNumImages(), VK_NULL_HANDLE);
 	for (uint32_t i = 0; i < this->swapChain.getNumImages(); i++)
 	{
-		DescriptorSet sceneSet;
-		sceneSet.init(this->renderInheritanceData.sceneDescriptors.layout, &this->renderInheritanceData.sceneDescriptors.sets[i], &this->descriptorPool);
-		sceneSet.setBufferDesc(0, this->sceneUBOs[i].getDescriptor());
-		sceneSet.update();
+		{ // Scene data, like camera matrices.
+			DescriptorSet sceneSet;
+			sceneSet.init(this->renderInheritanceData.sceneDescriptors.layout, &this->renderInheritanceData.sceneDescriptors.sets[i], &this->descriptorPool);
+			sceneSet.setBufferDesc(0, this->sceneUBOs[i].getDescriptor());
+			sceneSet.update();
+		}
+
+		{ // Environment maps
+			DescriptorSet sceneSet;
+			sceneSet.init(this->renderInheritanceData.sceneDescriptors.layoutEnv, &this->renderInheritanceData.sceneDescriptors.setsEnv[i], &this->descriptorPool);
+			sceneSet.setImageDesc(0, this->environmentMap->descriptor);
+			sceneSet.setImageDesc(1, this->irradianceMap->descriptor);
+			sceneSet.setImageDesc(2, this->prefilteredEnvironmentMap->descriptor);
+			sceneSet.update();
+		}
+	}
+}
+
+void ym::Renderer::createDefaultEnvironmentTextures(const std::string& hdrImagePath)
+{
+	int widthHDR = 0, heightHDR = 0, nrComponentsHDR = 0;
+	std::string hdrPath = YM_ASSETS_FILE_PATH + "/Textures/HDRs/Arches_E_PineTree_3k.hdr";
+	float* dataHDR = stbi_loadf(hdrPath.c_str(), &widthHDR, &heightHDR, &nrComponentsHDR, 4);
+	if (dataHDR)
+	{
+		ym::TextureDesc textureDesc;
+		textureDesc.width = (uint32_t)widthHDR;
+		textureDesc.height = (uint32_t)heightHDR;
+		textureDesc.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		textureDesc.data = (void*)dataHDR;
+		ym::Texture* tmpTexture = ym::Factory::createTexture(textureDesc, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		ym::CommandPools* commandPools = ym::LayerManager::get()->getCommandPools();
+		ym::Factory::transferData(tmpTexture, &commandPools->graphicsPool);
+		stbi_image_free(dataHDR);
+
+		this->environmentMap = IBLFunctions::convertEquirectangularToCubemap(512, tmpTexture, 1);
+		this->environmentSampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, this->environmentMap->image.getMipLevels());
+		tmpTexture->destroy();
+		SAFE_DELETE(tmpTexture);
+
+		auto irrAndPref = IBLFunctions::createIrradianceAndPrefilteredMap(this->environmentMap);
+		this->irradianceMap = irrAndPref.first;
+		this->prefilteredEnvironmentMap = irrAndPref.second;
+		this->irradianceSampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, this->irradianceMap->image.getMipLevels());
+		this->prefilteredSampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, this->prefilteredEnvironmentMap->image.getMipLevels());
+
+		ym::Factory::applyTextureDescriptor(this->irradianceMap, &this->irradianceSampler);
+		ym::Factory::applyTextureDescriptor(this->prefilteredEnvironmentMap, &this->prefilteredSampler);
+		ym::Factory::applyTextureDescriptor(this->environmentMap, &this->environmentSampler);
+	}
+	else
+	{
+		YM_LOG_WARN("Could not load HDR! Path: {}", hdrPath.c_str());
 	}
 }

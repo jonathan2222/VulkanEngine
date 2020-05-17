@@ -37,7 +37,7 @@ namespace ym
 
 		void setActiveCamera(Camera* camera);
 
-		Texture* convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, CubeMap* cubeMap, uint32_t desiredMipLevels);
+		Texture* getDefaultEnvironmentMap();
 
 		/*
 			Begin frame. Will return true if succeeded, false if the swap chain needs to be recreated.
@@ -63,6 +63,11 @@ namespace ym
 			Draw all objects in the object Manager as instanced models.
 		*/
 		void drawAllModels(ObjectManager* objectManager);
+
+		/*
+			Draw a skybox with the specifed cubemap texture.
+		*/
+		void drawSkybox(Texture* texture);
 
 		/*
 			Draw the scpecified cube map.
@@ -98,6 +103,8 @@ namespace ym
 		void destroyInheritanceData();
 		void setupSceneDescriptors();
 
+		void createDefaultEnvironmentTextures(const std::string& hdrImagePath);
+
 	private:
 		SwapChain swapChain;
 		std::vector<Framebuffer> framebuffers;
@@ -114,6 +121,14 @@ namespace ym
 		Camera* activeCamera{ nullptr };
 		std::vector<UniformBuffer> sceneUBOs;
 		DescriptorPool descriptorPool;
+
+		// Environment map
+		Texture* irradianceMap{ nullptr };
+		Texture* prefilteredEnvironmentMap{ nullptr };
+		Texture* environmentMap{ nullptr };
+		Sampler irradianceSampler;
+		Sampler prefilteredSampler;
+		Sampler environmentSampler;
 
 		// Recording
 		std::vector<CommandBuffer*> primaryCommandBuffersGraphics;

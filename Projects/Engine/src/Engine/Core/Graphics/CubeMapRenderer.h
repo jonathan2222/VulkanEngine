@@ -26,15 +26,14 @@ namespace ym
 		void destroy();
 
 		/*
-			Convert a texture from equirectangular form to a cubemap form with the desired mip levels.
-			If desiredMipLevels is 0, the final texture will use as many mip levels as it can.
-		*/
-		Texture* convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, CubeMap* cubeMap, uint32_t desiredMipLevels);
-
-		/*
 			Prepare to draw.
 		*/
 		void begin(uint32_t imageIndex, VkCommandBufferInheritanceInfo inheritanceInfo);
+
+		/*
+			Draw a skybox with the specifed cubemap texture.
+		*/
+		void drawSkybox(uint32_t imageIndex, Texture* texture);
 
 		/*
 			Draw the specified cube map.
@@ -76,6 +75,8 @@ namespace ym
 
 	private:
 		SwapChain* swapChain;
+
+		CubeMap defaultCubeModel;
 
 		std::vector<bool> shouldRecreateDescriptors;
 		std::vector<std::map<uint64_t, DrawData>> drawBatch;

@@ -168,13 +168,6 @@ float microfacetDistribution(PBRInfo pbrInputs)
 }
 
 void main() {
-	/*vec3 lightDir = normalize(vec3(0.5, 2.0, 0.5));
-    vec3 baseColor = texture(baseColorTexture, fragUv).rgb;
-	float diffuse = max(dot(lightDir, normalize(fragNormal)), 0.0);
-	vec3 n = (normalTextureCoord > -1) ? getNormal() : normalize(fragNormal);
-    outColor = vec4(n*0.5 + 0.5, 1.0);//vec4(baseColor*diffuse, 1.0);
-	*/
-
     vec3 lightDir = normalize(vec3(0.5, 2.0, 0.5)); // Vector from surface point to light
 
     // Get material color

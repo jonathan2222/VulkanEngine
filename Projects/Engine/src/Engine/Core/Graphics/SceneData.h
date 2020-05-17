@@ -18,5 +18,9 @@ namespace ym
 	{
 		DescriptorLayout layout; // Holds camera data and other global data for the scene.
 		std::vector<VkDescriptorSet> sets;
+
+		// Holds descriptors for the environment maps.
+		DescriptorLayout layoutEnv;
+		std::vector<VkDescriptorSet> setsEnv;
 	};
 }

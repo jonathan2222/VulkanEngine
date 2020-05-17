@@ -32,8 +32,7 @@ private:
 	ym::Terrain terrain;
 	ym::Camera camera;
 
-	ym::CubeMap cubeMap;
-	ym::CubeMap cubeMapHDR;
+	ym::Texture* environmentMap;
 
 	ym::Sound* cameraLockSound;
 	ym::Sound* cameraUnlockSound;

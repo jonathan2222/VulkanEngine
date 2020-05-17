@@ -23,7 +23,7 @@ void ym::ModelRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass
 	this->commandBuffers = this->commandPool.createCommandBuffers(this->swapChain->getNumImages(), VK_COMMAND_BUFFER_LEVEL_SECONDARY);
 
 	this->shader.addStage(Shader::Type::VERTEX, YM_ASSETS_FILE_PATH + "Shaders/pbrTestVert.spv");
-	this->shader.addStage(Shader::Type::FRAGMENT, YM_ASSETS_FILE_PATH + "Shaders/pbrTestFrag.spv");
+	this->shader.addStage(Shader::Type::FRAGMENT, YM_ASSETS_FILE_PATH + "Shaders/pbrFrag.spv");
 	this->shader.init();
 
 	this->shouldRecreateDescriptors.resize(this->swapChain->getNumImages(), false);
@@ -31,7 +31,7 @@ void ym::ModelRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPass
 	this->renderInheritanceData = renderInheritanceData;
 
 	createDescriptorLayouts();
-	std::vector<DescriptorLayout> descriptorLayouts = { this->renderInheritanceData->sceneDescriptors.layout, descriptorSetLayouts.node, descriptorSetLayouts.material, descriptorSetLayouts.model };
+	std::vector<DescriptorLayout> descriptorLayouts = { this->renderInheritanceData->sceneDescriptors.layout, descriptorSetLayouts.node, descriptorSetLayouts.material, descriptorSetLayouts.model, this->renderInheritanceData->sceneDescriptors.layoutEnv };
 	VkVertexInputBindingDescription vertexBindingDescriptions = Vertex::getBindingDescriptions();
 	std::array<VkVertexInputAttributeDescription, 3> vertexAttributeDescriptions = Vertex::getAttributeDescriptions();
 	PipelineInfo pipelineInfo = {};
@@ -185,7 +185,8 @@ void ym::ModelRenderer::drawNode(uint32_t imageIndex, VkDescriptorSet instanceDe
 				this->renderInheritanceData->sceneDescriptors.sets[imageIndex],
 				node.descriptorSets[imageIndex], 
 				primitive.material->descriptorSets[imageIndex],
-				instanceDescriptorSet
+				instanceDescriptorSet,
+				this->renderInheritanceData->sceneDescriptors.setsEnv[imageIndex]
 			};
 			std::vector<uint32_t> offsets;
 			commandBuffer->cmdBindDescriptorSets(pipeline, 0, sets, offsets);

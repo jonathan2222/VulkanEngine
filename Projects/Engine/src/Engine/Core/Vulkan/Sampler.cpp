@@ -12,7 +12,7 @@ namespace ym
 	{
 	}
 
-	void Sampler::init(VkFilter minFilter, VkFilter magFilter, VkSamplerAddressMode uWrap, VkSamplerAddressMode vWrap, uint32_t mipLevels)
+	void Sampler::init(VkFilter minFilter, VkFilter magFilter, VkSamplerAddressMode uWrap, VkSamplerAddressMode vWrap, float mipLevels)
 	{
 		VkSamplerCreateInfo samplerInfo = {};
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -40,6 +40,7 @@ namespace ym
 
 	void Sampler::destroy()
 	{
-		vkDestroySampler(VulkanInstance::get()->getLogicalDevice(), this->sampler, nullptr);
+		if(this->sampler != VK_NULL_HANDLE)
+			vkDestroySampler(VulkanInstance::get()->getLogicalDevice(), this->sampler, nullptr);
 	}
 }
