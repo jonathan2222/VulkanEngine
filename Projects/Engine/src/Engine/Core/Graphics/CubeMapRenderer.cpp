@@ -108,7 +108,7 @@ void ym::CubeMapRenderer::begin(uint32_t imageIndex, VkCommandBufferInheritanceI
 void ym::CubeMapRenderer::drawSkybox(uint32_t imageIndex, Texture* texture)
 {
 	// This can be done because there will always be only one skybox at the same time.
-	this->defaultCubeModel.setTextureCreateSampler(texture);
+	this->defaultCubeModel.setTexture(texture, 1); // Also create a sampler with one mip level.
 	glm::mat4 transform(1.f);
 
 	DrawData drawData = {};

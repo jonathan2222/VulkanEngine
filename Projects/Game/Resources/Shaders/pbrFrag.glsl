@@ -17,6 +17,7 @@ layout(set=2, binding=4) uniform sampler2D emissiveTexture;
 layout(set=4, binding=0) uniform samplerCube environmentMap;
 layout(set=4, binding=1) uniform samplerCube irradianceMap;
 layout(set=4, binding=2) uniform samplerCube prefilteredEnvMap;
+layout(set=4, binding=3) uniform sampler2D brdfLutTexture;
 
 layout(push_constant) uniform PushConstantsFrag
 {
@@ -137,6 +138,8 @@ void main() {
     vec3 F0 = vec3(0.04);
     F0 = mix(F0, surfaceColor.rgb, metallic);
 
+    vec3 R = reflect(-V, N);
+
     // Also known as Cdiff
     vec3 diffuseAlbedo = surfaceColor.rgb;//mix(surfaceColor.rgb * (1.0 - 0.04), vec3(0.0), metallic);
 
@@ -179,7 +182,22 @@ void main() {
         Lo += (Kd * diffuseAlbedo / PI + specular) * radiance * NdotL;
     }
 
-    vec3 ambient = getAmbientFromEnvironment(N, V, F0, roughness, diffuseAlbedo);//vec3(0.001) * diffuseAlbedo;
+    // IBL calculation.
+    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec3 Ks = F;
+    vec3 Kd = 1.0 - Ks;
+    Kd *= 1.0 - metallic;
+
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 diffuse = irradiance * diffuseAlbedo;
+
+    float envMapDim = float(textureSize(prefilteredEnvMap, 0).s);
+    float MAX_REFLECTION_LOD = log2(envMapDim);
+    vec3 prelilteredColor = textureLod(prefilteredEnvMap, R, roughness * MAX_REFLECTION_LOD).rgb;
+    vec2 envBRDF = texture(brdfLutTexture, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    vec3 specular = prelilteredColor * (F * envBRDF.x + envBRDF.y);
+    vec3 ambient = (Kd * diffuse + specular);
+
     // Apply ambient occlusion term.
     const float u_OcclusionStrength = 1.0f;
 	if (occlusionTextureCoord > -1) {

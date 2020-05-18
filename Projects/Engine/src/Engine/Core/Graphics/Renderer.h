@@ -126,9 +126,11 @@ namespace ym
 		Texture* irradianceMap{ nullptr };
 		Texture* prefilteredEnvironmentMap{ nullptr };
 		Texture* environmentMap{ nullptr };
+		Texture* brdfLutTexture{ nullptr };
 		Sampler irradianceSampler;
 		Sampler prefilteredSampler;
 		Sampler environmentSampler;
+		Sampler brdfLutSampler;
 
 		// Recording
 		std::vector<CommandBuffer*> primaryCommandBuffersGraphics;

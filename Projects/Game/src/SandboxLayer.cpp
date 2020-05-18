@@ -89,7 +89,6 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	transformCrate = glm::translate(glm::mat4(1.0f), { -3.0f, 1.f, 2.f }) * transformCrate;
 	this->woodenCrateObject = ym::ObjectManager::get()->createGameObject(transformCrate, &this->woodenCrateModel);
 
-
 	/*
 	glm::mat4 transformSponza(1.0f);
 	transformSponza[3][3] = 1.0f;

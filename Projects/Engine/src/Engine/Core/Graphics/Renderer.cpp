@@ -73,9 +73,12 @@ void ym::Renderer::destroy()
 	SAFE_DELETE(this->prefilteredEnvironmentMap);
 	this->irradianceMap->destroy();
 	SAFE_DELETE(this->irradianceMap);
+	this->brdfLutTexture->destroy();
+	SAFE_DELETE(this->brdfLutTexture);
 	this->irradianceSampler.destroy();
 	this->prefilteredSampler.destroy();
 	this->environmentSampler.destroy();
+	this->brdfLutSampler.destroy();
 
 	this->imgui.destroy();
 
@@ -467,9 +470,10 @@ void ym::Renderer::setupSceneDescriptors()
 	this->renderInheritanceData.sceneDescriptors.layout.add(new UBO(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)); // Camera
 	this->renderInheritanceData.sceneDescriptors.layout.init();
 
-	this->renderInheritanceData.sceneDescriptors.layoutEnv.add(new IMG(VK_SHADER_STAGE_FRAGMENT_BIT)); // Environment map (2D texture)
+	this->renderInheritanceData.sceneDescriptors.layoutEnv.add(new IMG(VK_SHADER_STAGE_FRAGMENT_BIT)); // Environment map (Cubemap)
 	this->renderInheritanceData.sceneDescriptors.layoutEnv.add(new IMG(VK_SHADER_STAGE_FRAGMENT_BIT)); // Irradiance map (Cubemap)
 	this->renderInheritanceData.sceneDescriptors.layoutEnv.add(new IMG(VK_SHADER_STAGE_FRAGMENT_BIT)); // Prefiltered environment map (Cubemap)
+	this->renderInheritanceData.sceneDescriptors.layoutEnv.add(new IMG(VK_SHADER_STAGE_FRAGMENT_BIT)); // BRDF LUT texture (2D texture)
 	this->renderInheritanceData.sceneDescriptors.layoutEnv.init();
 
 	// There is only one scene at a time => one descriptor set.
@@ -497,6 +501,7 @@ void ym::Renderer::setupSceneDescriptors()
 			sceneSet.setImageDesc(0, this->environmentMap->descriptor);
 			sceneSet.setImageDesc(1, this->irradianceMap->descriptor);
 			sceneSet.setImageDesc(2, this->prefilteredEnvironmentMap->descriptor);
+			sceneSet.setImageDesc(3, this->brdfLutTexture->descriptor);
 			sceneSet.update();
 		}
 	}
@@ -519,7 +524,7 @@ void ym::Renderer::createDefaultEnvironmentTextures(const std::string& hdrImageP
 		ym::Factory::transferData(tmpTexture, &commandPools->graphicsPool);
 		stbi_image_free(dataHDR);
 
-		this->environmentMap = IBLFunctions::convertEquirectangularToCubemap(512, tmpTexture, 1);
+		this->environmentMap = IBLFunctions::convertEquirectangularToCubemap(512, tmpTexture, 0);
 		this->environmentSampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, this->environmentMap->image.getMipLevels());
 		tmpTexture->destroy();
 		SAFE_DELETE(tmpTexture);
@@ -530,9 +535,13 @@ void ym::Renderer::createDefaultEnvironmentTextures(const std::string& hdrImageP
 		this->irradianceSampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, this->irradianceMap->image.getMipLevels());
 		this->prefilteredSampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, this->prefilteredEnvironmentMap->image.getMipLevels());
 
+		this->brdfLutTexture = IBLFunctions::createBRDFLutTexture(512);
+		this->brdfLutSampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, this->brdfLutTexture->image.getMipLevels());
+
 		ym::Factory::applyTextureDescriptor(this->irradianceMap, &this->irradianceSampler);
 		ym::Factory::applyTextureDescriptor(this->prefilteredEnvironmentMap, &this->prefilteredSampler);
 		ym::Factory::applyTextureDescriptor(this->environmentMap, &this->environmentSampler);
+		ym::Factory::applyTextureDescriptor(this->brdfLutTexture, &this->brdfLutSampler);
 	}
 	else
 	{

@@ -37,22 +37,24 @@ vec2 hammersley2d(uint i, uint N)
 }
 
 // Based on http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_slides.pdf
-vec3 importanceSample_GGX(vec2 Xi, float roughness, vec3 normal) 
+vec3 importanceSample_GGX(vec2 Xi, vec3 N, float roughness) 
 {
 	// Maps a 2D point to a hemisphere with spread based on roughness
 	float alpha = roughness * roughness;
-	float phi = 2.0 * PI * Xi.x + random(normal.xz) * 0.1;
+	float phi = 2.0 * PI * Xi.x + random(N.xz) * 0.1;
 	float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (alpha*alpha - 1.0) * Xi.y));
 	float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+
+	// From spherical coordinates to cartesian coordinates.
 	vec3 H = vec3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
 
 	// Tangent space
-	vec3 up = abs(normal.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
-	vec3 tangentX = normalize(cross(up, normal));
-	vec3 tangentY = normalize(cross(normal, tangentX));
+	vec3 up = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+	vec3 tangentX = normalize(cross(up, N));
+	vec3 tangentY = normalize(cross(N, tangentX));
 
 	// Convert to world Space
-	return normalize(tangentX * H.x + tangentY * H.y + normal * H.z);
+	return normalize(tangentX * H.x + tangentY * H.y + N * H.z);
 }
 
 // Normal Distribution function
@@ -73,8 +75,9 @@ vec3 prefilterEnvMap(vec3 R, float roughness)
 	float envMapDim = float(textureSize(samplerEnv, 0).s);
 	for(uint i = 0u; i < consts.numSamples; i++) {
 		vec2 Xi = hammersley2d(i, consts.numSamples);
-		vec3 H = importanceSample_GGX(Xi, roughness, N);
-		vec3 L = 2.0 * dot(V, H) * H - V;
+		vec3 H = importanceSample_GGX(Xi, N, roughness);
+		vec3 L = normalize(2.0 * dot(V, H) * H - V);
+
 		float dotNL = clamp(dot(N, L), 0.0, 1.0);
 		if(dotNL > 0.0) {
 			// Filtering based on https://placeholderart.wordpress.com/2015/07/28/implementation-notes-runtime-environment-map-filtering-for-image-based-lighting/

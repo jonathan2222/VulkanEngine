@@ -14,4 +14,7 @@ C:/VulkanSDK/1.1.130.0/Bin32/glslc.exe -fshader-stage=frag cubeConvertFrag.glsl 
 
 C:/VulkanSDK/1.1.130.0/Bin32/glslc.exe -fshader-stage=frag irradianceCubeFrag.glsl -o irradianceCubeFrag.spv
 C:/VulkanSDK/1.1.130.0/Bin32/glslc.exe -fshader-stage=frag prefilteredEnvMapFrag.glsl -o prefilteredEnvMapFrag.spv
+
+C:/VulkanSDK/1.1.130.0/Bin32/glslc.exe -fshader-stage=vertex genbrdflutVert.glsl -o genbrdflutVert.spv
+C:/VulkanSDK/1.1.130.0/Bin32/glslc.exe -fshader-stage=frag genbrdflutFrag.glsl -o genbrdflutFrag.spv
 pause

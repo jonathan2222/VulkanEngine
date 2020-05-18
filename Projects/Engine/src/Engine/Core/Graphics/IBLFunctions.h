@@ -14,5 +14,7 @@ namespace ym
 		static Texture* convertEquirectangularToCubemap(uint32_t sideSize, Texture* texture, uint32_t desiredMipLevels);
 
 		static std::pair<ym::Texture*, ym::Texture*> createIrradianceAndPrefilteredMap(Texture* environmentCube);
+
+		static Texture* createBRDFLutTexture(uint32_t size);
 	};
 }
