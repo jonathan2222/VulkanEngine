@@ -195,15 +195,15 @@ namespace ym
 			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			barrier.subresourceRange.layerCount = 1;
 			barrier.subresourceRange.levelCount = 1;
-
-			uint32_t mipWidth = texture->textureDesc.width;
-			uint32_t mipHeight = texture->textureDesc.height;
+			barrier.subresourceRange.layerCount = 1;
+			
 			for (uint32_t j = 0; j < texture->image.getArrayLayers(); j++)
 			{
 				barrier.subresourceRange.baseArrayLayer = j;
-
+				
+				uint32_t mipWidth = texture->textureDesc.width;
+				uint32_t mipHeight = texture->textureDesc.height;
 				for (uint32_t i = 1; i < texture->image.getMipLevels(); i++)
 				{
 					barrier.subresourceRange.baseMipLevel = i - 1;

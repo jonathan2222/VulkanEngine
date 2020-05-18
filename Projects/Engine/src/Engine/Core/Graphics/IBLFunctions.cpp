@@ -63,7 +63,7 @@ ym::Texture* ym::IBLFunctions::convertEquirectangularToCubemap(uint32_t sideSize
 	descPool.init(1);
 
 	Sampler sampler;
-	sampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, mipLevels);
+	sampler.init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, texture->image.getMipLevels());
 
 	VkDescriptorSet descriptorSet;
 	DescriptorSet modelSet;
@@ -275,6 +275,7 @@ ym::Texture* ym::IBLFunctions::convertEquirectangularToCubemap(uint32_t sideSize
 
 	commandPool->endSingleTimeCommand(commandBuffer);
 
+	//texture->image.setLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	if (mipLevels > 1)
 		Factory::generateMipmaps(newTexture);
 
