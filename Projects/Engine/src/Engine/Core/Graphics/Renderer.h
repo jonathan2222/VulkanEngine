@@ -39,6 +39,8 @@ namespace ym
 
 		Texture* getDefaultEnvironmentMap();
 
+		void setScreenData(float screenExposure, float screenGamma);
+
 		/*
 			Begin frame. Will return true if succeeded, false if the swap chain needs to be recreated.
 		*/
@@ -121,6 +123,7 @@ namespace ym
 		Camera* activeCamera{ nullptr };
 		std::vector<UniformBuffer> sceneUBOs;
 		DescriptorPool descriptorPool;
+		float screenData[2];
 
 		// Environment map
 		Texture* irradianceMap{ nullptr };

@@ -5,6 +5,8 @@ layout(location = 0) in vec3 fragNormal;
 layout(location = 1) in vec2 fragUv;
 layout(location = 2) in vec3 fragPos;
 layout(location = 3) in vec3 camPos;
+layout(location = 4) in float fragScreenExposure;
+layout(location = 5) in float fragScreenGamma;
 
 layout(location = 0) out vec4 outColor;
 
@@ -36,11 +38,32 @@ layout(push_constant) uniform PushConstantsFrag
 const float PI = 3.14159265359;
 const float MIN_ROUGHNESS = 0.04;
 const float ALPHA_CUTOFF = 0.1;
+const float SCREEN_GAMMA = 2.2; // Assume the monitor is calibrated to the sRGB color space.
+const float SCREEN_EXPOSURE = 1.0;
 
 vec4 SRGBtoLINEAR(vec4 color);
 vec3 getNormal();
 vec4 getSurfaceColor(vec2 uv);
 vec2 getMetallicAndRoughness(vec2 uv);
+
+vec3 Uncharted2Tonemap(vec3 color)
+{
+	float A = 0.15;
+	float B = 0.50;
+	float C = 0.10;
+	float D = 0.20;
+	float E = 0.02;
+	float F = 0.30;
+	float W = 11.2;
+	return ((color*(A*color+C*B)+D*E)/(color*(A*color+B)+D*F))-E/F;
+}
+
+vec3 tonemap(vec3 color)
+{
+	vec3 outcol = Uncharted2Tonemap(color.rgb * fragScreenExposure);
+	outcol = outcol * (1.0 / Uncharted2Tonemap(vec3(11.2)));	
+	return pow(outcol, vec3(1.0 / fragScreenGamma));
+}
 
 /*
     Calculates the normal distribution function. Will give a value close to 1.0 if the microfacets on surface with normal N align to the halfway vector H.
@@ -213,10 +236,11 @@ void main() {
 	}
 
     // Tone map the HDR color using Reinhard operator.
-    color = color / (color + vec3(1.0));
+    //color = color / (color + vec3(1.0));
     // Gamma correction.
-    color = pow(color, vec3(1.0/2.2)); 
+    //color = pow(color, vec3(1.0/2.2)); 
 
+    color = tonemap(color);
     outColor = vec4(color, surfaceColor.a);
 }
 

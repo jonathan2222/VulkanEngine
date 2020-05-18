@@ -18,6 +18,8 @@ ym::Renderer::Renderer()
 {
 	this->depthTexture = nullptr;
 	this->currentFrame = 0;
+	this->screenData[0] = 4.5f; // Screen exposure
+	this->screenData[1] = 2.2f; // Screen gamma
 }
 
 ym::Renderer::~Renderer()
@@ -112,6 +114,12 @@ void ym::Renderer::setActiveCamera(Camera* camera)
 ym::Texture* ym::Renderer::getDefaultEnvironmentMap()
 {
 	return this->environmentMap;
+}
+
+void ym::Renderer::setScreenData(float screenExposure, float screenGamma)
+{
+	this->screenData[0] = screenExposure;
+	this->screenData[1] = screenGamma;
 }
 
 bool ym::Renderer::begin()
@@ -213,10 +221,11 @@ void ym::Renderer::drawTerrain(Terrain* terrain, const glm::mat4& transform)
 bool ym::Renderer::end()
 {
 	// Update camera.
-	SceneData sceneData;
+	SceneData sceneData = {};
 	sceneData.proj = this->activeCamera->getProjection();
 	sceneData.view = this->activeCamera->getView();
 	sceneData.cPos = this->activeCamera->getPosition();
+	sceneData.screenData = glm::vec2(this->screenData[0], this->screenData[1]);
 	this->sceneUBOs[imageIndex].transfer(&sceneData, sizeof(SceneData), 0);
 
 	// End renderers.
@@ -510,8 +519,7 @@ void ym::Renderer::setupSceneDescriptors()
 void ym::Renderer::createDefaultEnvironmentTextures(const std::string& hdrImagePath)
 {
 	int widthHDR = 0, heightHDR = 0, nrComponentsHDR = 0;
-	std::string hdrPath = YM_ASSETS_FILE_PATH + "/Textures/HDRs/Arches_E_PineTree_3k.hdr";
-	float* dataHDR = stbi_loadf(hdrPath.c_str(), &widthHDR, &heightHDR, &nrComponentsHDR, 4);
+	float* dataHDR = stbi_loadf(hdrImagePath.c_str(), &widthHDR, &heightHDR, &nrComponentsHDR, 4);
 	if (dataHDR)
 	{
 		ym::TextureDesc textureDesc;
@@ -545,6 +553,6 @@ void ym::Renderer::createDefaultEnvironmentTextures(const std::string& hdrImageP
 	}
 	else
 	{
-		YM_LOG_WARN("Could not load HDR! Path: {}", hdrPath.c_str());
+		YM_LOG_WARN("Could not load HDR! Path: {}", hdrImagePath.c_str());
 	}
 }

@@ -231,6 +231,17 @@ void SandboxLayer::onRender(ym::Renderer* renderer)
 
 	ym::AudioSystem::get()->drawAudioSettings();
 
+	{
+		static bool my_tool_active = true;
+		static float screenExposure = 4.5f;
+		static float screenGamma = 2.2f;
+		ImGui::Begin("Screen Settings", &my_tool_active);
+		ImGui::SliderFloat("Screen Exposure", &screenExposure, 0.1f, 10.f, "%.001f");
+		ImGui::SliderFloat("Screen Gamma", &screenGamma, 0.1f, 4.0f, "%.01f");
+		renderer->setScreenData(screenExposure, screenGamma);
+		ImGui::End();
+	}
+
 	glm::mat4 transform(1.f);
 	renderer->drawSkybox(this->environmentMap);
 	renderer->drawAllModels(ym::ObjectManager::get());

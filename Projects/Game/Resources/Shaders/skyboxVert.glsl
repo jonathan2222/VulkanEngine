@@ -8,6 +8,7 @@ layout(set=0, binding = 0) uniform SceneData
     mat4 proj;
     mat4 view;
     vec4 cPos;
+    vec4 screenData;
 } scene;
 
 layout(set=2, binding = 0) readonly buffer TransformData
@@ -16,10 +17,15 @@ layout(set=2, binding = 0) readonly buffer TransformData
 };
 
 layout(location = 0) out vec3 fragUv;
+layout(location = 1) out float fragScreenExposure;
+layout(location = 2) out float fragScreenGamma;
 
 void main() {
     mat4 newView = mat4(mat3(scene.view)); // Remove translation.
     vec4 clipPos = scene.proj * newView * modelTransform[gl_InstanceIndex] * vec4(position.xyz, 1.0);
     gl_Position = clipPos.xyww; // Set it to max depth => z = 1.
     fragUv = position.xyz;
+
+    fragScreenExposure = scene.screenData.x;
+    fragScreenGamma = scene.screenData.y;
 }

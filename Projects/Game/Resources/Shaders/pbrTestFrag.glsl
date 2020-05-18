@@ -5,6 +5,8 @@ layout(location = 0) in vec3 fragNormal;
 layout(location = 1) in vec2 fragUv;
 layout(location = 2) in vec3 fragPos;
 layout(location = 3) in vec3 camPos;
+layout(location = 4) in float fragScreenExposure;
+layout(location = 5) in float fragScreenGamma;
 
 layout(location = 0) out vec4 outColor;
 
@@ -31,8 +33,6 @@ layout(push_constant) uniform PushConstantsFrag
 const float MIN_ROUGHNESS = 0.04;
 const float ALPHA_CUTOFF = 0.1;
 const float PI = 3.14159265359;
-const float SCREEN_GAMMA = 2.2; // Assume the monitor is calibrated to the sRGB color space.
-const float SCREEN_EXPOSURE = 1.0;
 
 // Not sure if this should be used.
 #define MANUAL_SRGB 1
@@ -81,9 +81,9 @@ vec3 Uncharted2Tonemap(vec3 color)
 
 vec4 tonemap(vec4 color)
 {
-	vec3 outcol = Uncharted2Tonemap(color.rgb * SCREEN_EXPOSURE);
+	vec3 outcol = Uncharted2Tonemap(color.rgb * fragScreenExposure);
 	outcol = outcol * (1.0f / Uncharted2Tonemap(vec3(11.2f)));	
-	return vec4(pow(outcol, vec3(1.0f / SCREEN_GAMMA)), color.a);
+	return vec4(pow(outcol, vec3(1.0f / fragScreenGamma)), color.a);
 }
 
 vec3 getNormal()

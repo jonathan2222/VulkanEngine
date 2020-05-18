@@ -12,6 +12,7 @@ namespace ym
 		glm::mat4 proj;
 		glm::mat4 view;
 		alignas(16) glm::vec3 cPos;
+		alignas(16) glm::vec2 screenData;
 	};
 
 	struct SceneDescriptors
