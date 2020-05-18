@@ -471,7 +471,7 @@ std::pair<ym::Texture*, ym::Texture*> ym::IBLFunctions::createIrradianceAndPrefi
 		struct PushBlockPrefilterEnv {
 			glm::mat4 mvp;
 			float roughness;
-			uint32_t numSamples = 32u;
+			uint32_t numSamples = 1024u;
 		} pushBlockPrefilterEnv;
 
 		VkPushConstantRange pushConstantRange = {};
@@ -485,6 +485,18 @@ std::pair<ym::Texture*, ym::Texture*> ym::IBLFunctions::createIrradianceAndPrefi
 			pushConstantRange.size = sizeof(PushBlockPrefilterEnv);
 			break;
 		};
+
+		VkViewport viewport{};
+		viewport.width = (float)extent.width;
+		viewport.height = (float)extent.height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		VkRect2D scissor{};
+		scissor.extent.width = extent.width;
+		scissor.extent.height = extent.height;
+
+		pipeline.setDynamicState({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR});
 		pipeline.setPushConstant(pushConstantRange);
 		pipeline.setPipelineInfo(PipelineInfoFlag::DEAPTH_STENCIL | PipelineInfoFlag::RASTERIZATION | PipelineInfoFlag::VERTEX_INPUT, pipelineInfo);
 		pipeline.setDescriptorLayouts(descriptorLayouts);
@@ -523,46 +535,55 @@ std::pair<ym::Texture*, ym::Texture*> ym::IBLFunctions::createIrradianceAndPrefi
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
 		};
 
-		commandBuffer = commandPool->beginSingleTimeCommand();
-
-		for (uint32_t i = 0; i < mipLevels; i++) {
-			VkImageSubresourceRange subresourceRange = {};
-			subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			subresourceRange.baseMipLevel = i;
-			subresourceRange.levelCount = 1;
-			subresourceRange.layerCount = 6;
+		VkImageSubresourceRange subresourceRange = {};
+		subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		subresourceRange.baseMipLevel = 0;
+		subresourceRange.levelCount = mipLevels;
+		subresourceRange.layerCount = 6;
+		// Transfer all cube faces and mipmaps to TRANSFER_DST.
+		{
+			commandBuffer = commandPool->beginSingleTimeCommand();
 			newTexture->image.setLayout(
 				commandBuffer,
 				VK_IMAGE_LAYOUT_UNDEFINED,
 				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				subresourceRange);
-
+			commandPool->endSingleTimeCommand(commandBuffer);
+		}
+		
+		for (uint32_t mip = 0; mip < mipLevels; mip++) {
 			for (uint32_t f = 0; f < 6; f++) {
+				commandBuffer = commandPool->beginSingleTimeCommand();
+
+				viewport.width = static_cast<float>(extent.width * std::pow(0.5f, mip));
+				viewport.height = static_cast<float>(extent.height * std::pow(0.5f, mip));
+				vkCmdSetViewport(commandBuffer->getCommandBuffer(), 0, 1, &viewport);
+				vkCmdSetScissor(commandBuffer->getCommandBuffer(), 0, 1, &scissor);
+
 				commandBuffer->cmdBeginRenderPass(&renderPass, frameBuffer, extent, clearValues, VK_SUBPASS_CONTENTS_INLINE);
 
-				VkBuffer buffer = cubeModel.getVertexBuffer()->getBuffer();
 
 				// Pass parameters for current pass using a push constant block
 				float pi = glm::pi<float>();
 				switch (target) {
 				case IRRADIANCE:
-					pushBlockIrradiance.mvp = glm::perspective((float)(pi / 2.0), 1.0f, 0.1f, 512.0f) * matrices[f];
+					pushBlockIrradiance.mvp = glm::perspective((float)(pi / 2.0), 1.0f, 0.1f, 512.f) * matrices[f];
 					vkCmdPushConstants(commandBuffer->getCommandBuffer(), pipeline.getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushBlockIrradiance), &pushBlockIrradiance);
 					break;
 				case PREFILTEREDENV:
-					pushBlockPrefilterEnv.mvp = glm::perspective((float)(pi / 2.0), 1.0f, 0.1f, 512.0f) * matrices[f];
-					pushBlockPrefilterEnv.roughness = (float)i / (float)(mipLevels - 1);
+					pushBlockPrefilterEnv.mvp = glm::perspective((float)(pi / 2.0), 1.0f, 0.1f, 512.f) * matrices[f];
+					pushBlockPrefilterEnv.roughness = (float)mip / (float)(mipLevels - 1);
 					vkCmdPushConstants(commandBuffer->getCommandBuffer(), pipeline.getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushBlockPrefilterEnv), &pushBlockPrefilterEnv);
 					break;
 				};
-
 				commandBuffer->cmdBindPipeline(&pipeline);
-				VkDeviceSize offset = 0;
-				commandBuffer->cmdBindVertexBuffers(0, 1, &buffer, &offset);
-
 				std::vector<VkDescriptorSet> sets = { descriptorSet };
 				std::vector<uint32_t> offsets;
 				commandBuffer->cmdBindDescriptorSets(&pipeline, 0, sets, offsets);
+
+				VkDeviceSize offset = 0;
+				VkBuffer buffer = cubeModel.getVertexBuffer()->getBuffer();
+				commandBuffer->cmdBindVertexBuffers(0, 1, &buffer, &offset);
 				commandBuffer->cmdDraw(36, 1, 0, 0);
 
 				commandBuffer->cmdEndRenderPass();
@@ -582,11 +603,11 @@ std::pair<ym::Texture*, ym::Texture*> ym::IBLFunctions::createIrradianceAndPrefi
 				copyRegion.srcOffset = { 0, 0, 0 };
 				copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 				copyRegion.dstSubresource.baseArrayLayer = f;
-				copyRegion.dstSubresource.mipLevel = 0;
+				copyRegion.dstSubresource.mipLevel = mip;
 				copyRegion.dstSubresource.layerCount = 1;
 				copyRegion.dstOffset = { 0, 0, 0 };
-				copyRegion.extent.width = extent.width;
-				copyRegion.extent.height = extent.height;
+				copyRegion.extent.width = static_cast<uint32_t>(viewport.width);
+				copyRegion.extent.height = static_cast<uint32_t>(viewport.height);
 				copyRegion.extent.depth = 1;
 
 				vkCmdCopyImage(
@@ -598,28 +619,30 @@ std::pair<ym::Texture*, ym::Texture*> ym::IBLFunctions::createIrradianceAndPrefi
 					1,
 					&copyRegion);
 
-				// Transform framebuffer color attachment back (Used if more mipmaps else not necessary!)
+				// Transform framebuffer color attachment back
 				image->image.setLayout(
 					commandBuffer,
 					VK_IMAGE_ASPECT_COLOR_BIT,
 					VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-			}
 
-			if (mipLevels == 1)
-			{
-				newTexture->image.setLayout(
-					commandBuffer,
-					VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-					subresourceRange);
+				commandPool->endSingleTimeCommand(commandBuffer);
 			}
 		}
 
-		commandPool->endSingleTimeCommand(commandBuffer);
+		// Transform to SHADER_READ layout.
+		{
+			commandBuffer = commandPool->beginSingleTimeCommand();
+			newTexture->image.setLayout(
+				commandBuffer,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				subresourceRange);
+			commandPool->endSingleTimeCommand(commandBuffer);
+		}
 
-		if (mipLevels > 1)
-			Factory::generateMipmaps(newTexture);
+		//if (mipLevels > 1)
+		//	Factory::generateMipmaps(newTexture);
 
 		sampler.destroy();
 		vkDestroyFramebuffer(VulkanInstance::get()->getLogicalDevice(), frameBuffer, nullptr);

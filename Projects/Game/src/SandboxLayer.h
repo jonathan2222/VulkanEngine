@@ -29,6 +29,7 @@ private:
 	ym::Model woodenCrateModel;
 	ym::Model fortModel;
 	ym::Model terrain2Model;
+	ym::Model metalBallsModel;
 	ym::Terrain terrain;
 	ym::Camera camera;
 

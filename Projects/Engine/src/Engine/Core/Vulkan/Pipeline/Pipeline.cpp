@@ -70,6 +70,11 @@ namespace ym
 		this->graphicsPipelineInitilized = true;
 	}
 
+	void Pipeline::setDynamicState(const std::vector<VkDynamicState>& dynamicStates)
+	{
+		this->dynamicStates = dynamicStates;
+	}
+
 	void Pipeline::setPipelineInfo(PipelineInfoFlag flags, PipelineInfo info)
 	{
 		this->graphicsPipelineInfoFlags = this->graphicsPipelineInfoFlags | flags;
@@ -137,15 +142,10 @@ namespace ym
 		viewportState.scissorCount = 1;
 		viewportState.pScissors = &scissor;
 
-		VkDynamicState dynamicStates[] = {
-			VK_DYNAMIC_STATE_VIEWPORT,
-			VK_DYNAMIC_STATE_LINE_WIDTH
-		};
-
 		VkPipelineDynamicStateCreateInfo dynamicState = {};
 		dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-		dynamicState.dynamicStateCount = 2;
-		dynamicState.pDynamicStates = dynamicStates;
+		dynamicState.dynamicStateCount = static_cast<uint32_t>(this->dynamicStates.size());
+		dynamicState.pDynamicStates = this->dynamicStates.data();
 
 		// Used to set up uniform buffers and push constants
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
@@ -260,7 +260,7 @@ namespace ym
 		pipelineInfo.pRasterizationState = &rasterizer;
 		pipelineInfo.pMultisampleState = &multisampling;
 		pipelineInfo.pColorBlendState = &colorBlending;
-		pipelineInfo.pDynamicState = nullptr; // Optional
+		pipelineInfo.pDynamicState = &dynamicState;
 		pipelineInfo.pDepthStencilState = &depthStencil;
 		pipelineInfo.layout = this->pipelineLayout;
 		pipelineInfo.renderPass = this->renderPass->getRenderPass();

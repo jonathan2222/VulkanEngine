@@ -153,7 +153,7 @@ void main() {
     vec3 radiance = lightColor * attenuation * cosTheta;
 */
     vec3 lightPositions[1] = vec3[1](vec3(30.0, 20.0, 2.0));
-    vec3 lightColors[1] = vec3[1](vec3(1.0));
+    vec3 lightColors[1] = vec3[1](vec3(0.0));
     int numLights = 1;
 
     vec3 Lo = vec3(0.0);

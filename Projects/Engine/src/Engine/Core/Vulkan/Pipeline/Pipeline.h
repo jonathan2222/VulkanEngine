@@ -35,6 +35,8 @@ namespace ym
 		void setWireframe(bool enable);
 		// Sets the necessary information for the graphics pipeline
 		void setGraphicsPipelineInfo(VkExtent2D extent, RenderPass* renderPass);
+		// Enable dynamic states. If this is not used, no state will be dynamic!
+		void setDynamicState(const std::vector<VkDynamicState>& dynamicStates);
 		// Overwrites the selected default pipeline infos, has to be done before init
 		void setPipelineInfo(PipelineInfoFlag flags, PipelineInfo info);
 		VkPipeline getPipeline() const { return this->pipeline; }
@@ -55,6 +57,7 @@ namespace ym
 		bool graphicsPipelineInitilized = false;
 		std::vector<VkDescriptorSetLayout> layouts;
 		std::vector<VkPushConstantRange> pushConstantRanges;
+		std::vector<VkDynamicState> dynamicStates;
 
 		// Pipeline create info
 		PipelineInfo graphicsPipelineInfo;

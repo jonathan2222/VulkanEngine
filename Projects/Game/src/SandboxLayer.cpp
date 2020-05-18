@@ -25,6 +25,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Scene1/Terrain2.glb", &this->terrain2Model);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Scene1/Castle.glb", &this->fortModel);
 	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Scene1/WoodenCrate.glb", &this->woodenCrateModel);
+	ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/MetalBalls/MetalBalls.glb", &this->metalBallsModel);
 	//ym::GLTFLoader::loadOnThread(YM_ASSETS_FILE_PATH + "Models/Sponza/glTF/Sponza.gltf", &this->sponzaModel);
 
 	int width, height;
@@ -69,6 +70,9 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	transformCube[3][3] = 1.0f;
 	transformCube = glm::translate(glm::mat4(1.0f), { 3.0f, 1.f, 2.f }) * transformCube;
 	this->cubeObject = ym::ObjectManager::get()->createGameObject(transformCube, &this->cubeModel);
+
+	transformCube = glm::translate(glm::mat4(1.0f), { -3.0f, 7.f, 2.f });
+	ym::ObjectManager::get()->createGameObject(transformCube, &this->metalBallsModel);
 
 	// Add chest
 	glm::mat4 transformChest(1.0f);
@@ -251,6 +255,8 @@ void SandboxLayer::onQuit()
 	this->woodenCrateModel.destroy();
 	this->fortModel.destroy();
 	this->terrain2Model.destroy();
+	this->metalBallsModel.destroy();
+
 	this->terrain.destroy();
 	this->camera.destroy();
 }
