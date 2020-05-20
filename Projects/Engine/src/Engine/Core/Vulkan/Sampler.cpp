@@ -25,7 +25,7 @@ namespace ym
 
 		samplerInfo.anisotropyEnable = VK_TRUE;
 		samplerInfo.maxAnisotropy = 16; // TODO: Should check the device properties limit for this value.
-		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_WHITE; // Color if sampling outside of memory
+		samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE; // Color if sampling outside of memory
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;
 		samplerInfo.compareEnable = VK_FALSE;
 		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;

@@ -43,7 +43,7 @@ namespace ym
 		void drawAudioSettings();
 
 	private:
-		void drawSoundSettings(Sound* sound);
+		void drawSoundSettings(Sound* sound, uint32_t index);
 
 		std::vector<Sound*> sounds;
 		std::vector<Sound*> soundStreams;

@@ -4,6 +4,8 @@
 #include "PortAudio.h"
 #include "AudioSystem.h"
 
+#include "Engine/Core/Camera.h"
+
 ym::Sound::Sound(PortAudio* portAudioPtr) : volume(0.0f), userData(nullptr), stream(nullptr), portAudioPtr(portAudioPtr), isStreamOn(false)
 {
 }
@@ -205,6 +207,13 @@ void ym::Sound::setReceiverLeft(const glm::vec3& receiverLeft)
 void ym::Sound::setReceiverUp(const glm::vec3& receiverUp)
 {
 	this->userData->soundData.receiverUp = receiverUp;
+}
+
+void ym::Sound::setReceiver(Camera* camera)
+{
+	setReceiverPosition(camera->getPosition());
+	setReceiverLeft(-camera->getRight());
+	setReceiverUp(camera->getUp());
 }
 
 /*

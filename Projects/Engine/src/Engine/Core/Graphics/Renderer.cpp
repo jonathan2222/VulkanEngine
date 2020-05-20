@@ -447,7 +447,7 @@ void ym::Renderer::submit()
 
 void ym::Renderer::initInheritenceData()
 {
-	std::string hdrPath = YM_ASSETS_FILE_PATH + "/Textures/HDRs/Arches_E_PineTree_3k.hdr";
+	std::string hdrPath = YM_ASSETS_FILE_PATH + "/Textures/HDRs/arches.hdr";
 	createDefaultEnvironmentTextures(hdrPath);
 	setupSceneDescriptors();
 

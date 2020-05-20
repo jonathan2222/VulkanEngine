@@ -28,7 +28,7 @@ int ym::PCM::paCallbackPCM(const void* inputBuffer, void* outputBuffer, unsigned
 	UserData* data = (UserData*)userData;
 	uint64_t framesRead = readPCM(data, framesPerBuffer, outputBuffer);
 	OutputData outputData = getOutputData(data, outputBuffer);
-
+	
 	for (Filter* ft : data->filters)
 		ft->begin();
 	bool shouldContinue = false;
@@ -44,7 +44,6 @@ int ym::PCM::paCallbackPCM(const void* inputBuffer, void* outputBuffer, unsigned
 			rightEar = std::get<1>(res);
 			shouldContinue = shouldContinue && (abs(leftEar) > 0.00000001f ? true : shouldContinue);
 			shouldContinue = shouldContinue && (abs(rightEar) > 0.00000001f ? true : shouldContinue);
-
 		}
 
 		float volume = data->soundData.volume * data->soundData.groupVolume * data->soundData.masterVolume;
@@ -102,6 +101,13 @@ std::pair<float, float> ym::PCM::getSamples(UserData* data, OutputData* outputDa
 	return std::pair<float, float>(left, right);
 }
 
+std::pair<float, float> ym::PCM::getSamples(UserData* data, OutputData* outputData, uint32_t index)
+{
+	float left = data->sampleFormat == paInt16 ? (float)(outputData->outI16[index]) : outputData->outF32[index];
+	float right = data->sampleFormat == paInt16 ? (float)(outputData->outI16[index+1]) : outputData->outF32[index+1];
+	return std::pair<float, float>(left, right);
+}
+
 ym::PCM::OutputData ym::PCM::getOutputData(UserData* data, void* out)
 {
 	OutputData outData;
@@ -118,10 +124,24 @@ void ym::PCM::applyToEar(UserData* data, OutputData* outputData, float value)
 		*outputData->outF32++ = value;
 }
 
+void ym::PCM::applyToEar(UserData* data, OutputData* outputData, float value, uint32_t index)
+{
+	if (data->sampleFormat == paInt16)
+		outputData->outI16[index] = (int16_t)std::clamp(value, (float)INT16_MIN, (float)INT16_MAX);
+	else if (data->sampleFormat == paFloat32)
+		outputData->outF32[index] = value;
+}
+
 void ym::PCM::applyToEar(UserData* data, OutputData* outputData, std::pair<float, float> values)
 {
 	applyToEar(data, outputData, values.first);
 	applyToEar(data, outputData, values.second);
+}
+
+void ym::PCM::applyToEar(UserData* data, OutputData* outputData, std::pair<float, float> values, uint32_t index)
+{
+	applyToEar(data, outputData, values.first, index);
+	applyToEar(data, outputData, values.second, index+1);
 }
 
 uint64_t ym::PCM::readPCM(UserData* data, uint64_t framesPerBuffer, void* outBuffer)

@@ -5,6 +5,7 @@
 
 namespace ym
 {
+	class Camera;
 	class PortAudio;
 	class ChannelGroup;
 	class Sound
@@ -40,6 +41,7 @@ namespace ym
 		void setReceiverDir(const glm::vec3& receiverDir);
 		void setReceiverLeft(const glm::vec3& receiverLeft);
 		void setReceiverUp(const glm::vec3& receiverUp);
+		void setReceiver(Camera* camera);
 		
 		/*
 		void setCutoffFrequency(float fc);

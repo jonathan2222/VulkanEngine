@@ -42,11 +42,13 @@ namespace ym
 		static uint64_t readPCMFrames(SoundHandle* handle, uint64_t framesToRead, PaSampleFormat format, void* outBuffer);
 		static uint64_t readPCMFramesEffect(SoundHandle* handle, uint64_t framesToRead, PaSampleFormat format, void* outBuffer);
 		static std::pair<float, float> getSamples(UserData* data, OutputData* outputData);
+		static std::pair<float, float> getSamples(UserData* data, OutputData* outputData, uint32_t index);
 		static OutputData getOutputData(UserData* data, void* out);
 		static void applyToEar(UserData* data, OutputData* outputData, float value);
+		static void applyToEar(UserData* data, OutputData* outputData, float value, uint32_t index);
 		static void applyToEar(UserData* data, OutputData* outputData, std::pair<float, float> values);
+		static void applyToEar(UserData* data, OutputData* outputData, std::pair<float, float> values, uint32_t index);
 		static uint64_t readPCM(UserData* data, uint64_t framesPerBuffer, void* outBuffer);
 		static int finish(UserData* data, uint64_t framesRead, uint64_t framesPerBuffer, bool continueFlag);
-
 	};
 }

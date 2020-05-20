@@ -15,6 +15,7 @@
 #include "Engine/Core/Audio/Filters/DistanceFilter.h"
 #include "Engine/Core/Audio/Filters/EchoFilter.h"
 #include "Engine/Core/Audio/Filters/LowpassFilter.h"
+#include "Engine/Core/Audio/Filters/HighpassFilter.h"
 
 #include "Utils/Utils.h"
 
@@ -200,27 +201,30 @@ void ym::AudioSystem::drawAudioSettings()
 	{
 		static bool my_tool_active = true;
 		ImGui::Begin("Audio settings", &my_tool_active, ImGuiWindowFlags_MenuBar);
-		ImGui::SliderFloat("Master volume", &this->masterVolume, 0.0f, 1.f, "%.001f");
+		ImGui::SliderFloat("Master volume", &this->masterVolume, 0.0f, 1.f, "%.3f");
 
+		uint32_t index = 0;
 		if (ImGui::CollapsingHeader("Effects"))
 		{
-			ImGui::SliderFloat("Effects volume", &this->effectsVolume, 0.0f, 1.f, "%.001f");
+			ImGui::SliderFloat("Effects volume", &this->effectsVolume, 0.0f, 1.f, "%.3f");
 			for (Sound* sound : this->sounds)
 			{
 				sound->setGroupVolume(this->effectsVolume);
 				sound->setMasterVolume(this->masterVolume);
-				drawSoundSettings(sound);
+				drawSoundSettings(sound, index);
+				index++;
 			}
 		}
 
 		if (ImGui::CollapsingHeader("Streams"))
 		{
-			ImGui::SliderFloat("Streams Volume", &this->streamVolume, 0.0f, 1.f, "%.001f");
+			ImGui::SliderFloat("Streams Volume", &this->streamVolume, 0.0f, 1.f, "%.3f");
 			for (Sound* sound : this->soundStreams)
 			{
 				sound->setGroupVolume(this->streamVolume);
 				sound->setMasterVolume(this->masterVolume);
-				drawSoundSettings(sound);
+				drawSoundSettings(sound, index);
+				index++;
 			}
 		}
 
@@ -228,12 +232,13 @@ void ym::AudioSystem::drawAudioSettings()
 	}
 }
 
-void ym::AudioSystem::drawSoundSettings(Sound* sound)
+void ym::AudioSystem::drawSoundSettings(Sound* sound, uint32_t index)
 {
-	if (ImGui::TreeNode(sound->getName().c_str()))
+	std::string name = "[" + std::to_string(index) + "]" + sound->getName();
+	if (ImGui::TreeNode(name.c_str()))
 	{
 		float volume = sound->getVolume();
-		ImGui::SliderFloat("Volume", &volume, 0.0f, 1.f, "%.001f");
+		ImGui::SliderFloat("Volume", &volume, 0.0f, 1.f, "%.3f");
 		sound->setVolume(volume);
 
 		auto& filters = sound->getFilters();
@@ -243,9 +248,16 @@ void ym::AudioSystem::drawSoundSettings(Sound* sound)
 			{
 				if (ym::LowpassFilter * lowpassF = dynamic_cast<ym::LowpassFilter*>(filter))
 				{
-					float fc = lowpassF->getCutoffFrequency();
-					ImGui::SliderFloat("Cutoff frequency", &fc, 0.0f, lowpassF->getSampleRate() * 0.5f, "%.0f Hz");
-					lowpassF->setCutoffFrequency(fc);
+					float fcLow = lowpassF->getCutoffFrequency();
+					ImGui::SliderFloat("[Low]Cutoff frequency", &fcLow, 0.0f, lowpassF->getSampleRate() * 0.5f, "%.0f Hz");
+					lowpassF->setCutoffFrequency(fcLow);
+				}
+
+				if (ym::HighpassFilter * highpassF = dynamic_cast<ym::HighpassFilter*>(filter))
+				{
+					float fcHigh = highpassF->getCutoffFrequency();
+					ImGui::SliderFloat("[High]Cutoff frequency", &fcHigh, 0.0f, highpassF->getSampleRate() * 0.5f, "%.0f Hz");
+					highpassF->setCutoffFrequency(fcHigh);
 				}
 
 				if (ym::EchoFilter * echoF = dynamic_cast<ym::EchoFilter*>(filter))

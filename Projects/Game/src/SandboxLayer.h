@@ -30,6 +30,9 @@ private:
 	ym::Model fortModel;
 	ym::Model terrain2Model;
 	ym::Model metalBallsModel;
+	ym::Model knightSwordModel;
+	ym::Model knightSpearModel;
+	ym::Model dragonModel;
 	ym::Terrain terrain;
 	ym::Camera camera;
 
@@ -39,7 +42,11 @@ private:
 	ym::Sound* cameraUnlockSound;
 	ym::Sound* ambientSound;
 	ym::Sound* music;
-	ym::Sound* pokerChips;
+	ym::Sound* chestSound;
+	ym::Sound* crateSound;
+	ym::Sound* crowdSound;
+	ym::Sound* helloSound1;
+	ym::Sound* helloSound2;
 
 	std::vector<ym::GameObject*> treesObjects;
 	ym::GameObject* watterBottleObject;

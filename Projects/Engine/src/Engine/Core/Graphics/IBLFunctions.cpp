@@ -344,7 +344,7 @@ std::pair<ym::Texture*, ym::Texture*> ym::IBLFunctions::createIrradianceAndPrefi
 		textureDesc.height = sideSize;
 		textureDesc.format = format;
 		textureDesc.data = nullptr;
-		Texture* image = Factory::createTexture(textureDesc, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		Texture* image = Factory::createTexture(textureDesc, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_QUEUE_GRAPHICS_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
 		CommandPool* commandPool = &LayerManager::get()->getCommandPools()->graphicsPool;
 		CommandBuffer* commandBuffer = commandPool->beginSingleTimeCommand();
@@ -464,14 +464,14 @@ std::pair<ym::Texture*, ym::Texture*> ym::IBLFunctions::createIrradianceAndPrefi
 
 		struct PushBlockIrradiance {
 			glm::mat4 mvp;
-			float deltaPhi = (2.0f * glm::pi<float>()) / 180.0f;
-			float deltaTheta = (0.5f * glm::pi<float>()) / 64.0f;
+			float deltaPhi = 0.025f;// (2.0f* glm::pi<float>()) / 180.0f;
+			float deltaTheta = 0.025f;//(0.5f * glm::pi<float>()) / 64.0f;
 		} pushBlockIrradiance;
 
 		struct PushBlockPrefilterEnv {
 			glm::mat4 mvp;
 			float roughness;
-			uint32_t numSamples = 1024u;
+			uint32_t numSamples = 1048u;
 		} pushBlockPrefilterEnv;
 
 		VkPushConstantRange pushConstantRange = {};
@@ -505,7 +505,7 @@ std::pair<ym::Texture*, ym::Texture*> ym::IBLFunctions::createIrradianceAndPrefi
 
 		std::vector<VkClearValue> clearValues = {};
 		VkClearValue value;
-		value.color = { 0.0f, 0.0f, 0.0f, 1.0f };
+		value.color = { 0.0f, 0.0f, 0.2f, 0.0f };
 		clearValues.push_back(value);
 
 		VkFramebuffer frameBuffer;
@@ -562,16 +562,15 @@ std::pair<ym::Texture*, ym::Texture*> ym::IBLFunctions::createIrradianceAndPrefi
 
 				commandBuffer->cmdBeginRenderPass(&renderPass, frameBuffer, extent, clearValues, VK_SUBPASS_CONTENTS_INLINE);
 
-
 				// Pass parameters for current pass using a push constant block
 				float pi = glm::pi<float>();
 				switch (target) {
 				case IRRADIANCE:
-					pushBlockIrradiance.mvp = glm::perspective((float)(pi / 2.0), 1.0f, 0.1f, 512.f) * matrices[f];
+					pushBlockIrradiance.mvp = glm::perspective((float)(pi / 2.0), 1.0f, 0.1f, 10.f) * matrices[f];
 					vkCmdPushConstants(commandBuffer->getCommandBuffer(), pipeline.getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushBlockIrradiance), &pushBlockIrradiance);
 					break;
 				case PREFILTEREDENV:
-					pushBlockPrefilterEnv.mvp = glm::perspective((float)(pi / 2.0), 1.0f, 0.1f, 512.f) * matrices[f];
+					pushBlockPrefilterEnv.mvp = glm::perspective((float)(pi / 2.0), 1.0f, 0.1f, 10.f) * matrices[f];
 					pushBlockPrefilterEnv.roughness = (float)mip / (float)(mipLevels - 1);
 					vkCmdPushConstants(commandBuffer->getCommandBuffer(), pipeline.getPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushBlockPrefilterEnv), &pushBlockPrefilterEnv);
 					break;

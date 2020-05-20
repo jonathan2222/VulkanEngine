@@ -134,16 +134,6 @@ float calculateAttenuation(vec3 p, vec3 lp)
     return 1./dot(pToLp, pToLp);
 }
 
-vec3 getAmbientFromEnvironment(vec3 N, vec3 V, vec3 F0, float roughness, vec3 albedo)
-{
-    vec3 Ks = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
-    vec3 Kd = 1.0 - Ks;
-    vec3 irradiance = texture(irradianceMap, N).rgb;
-    vec3 diffuse = irradiance * albedo;
-    vec3 ambient = (Kd * diffuse);
-    return ambient;
-}
-
 void main() {
     // Get surface color.
     vec4 surfaceColor = getSurfaceColor(fragUv);
@@ -214,8 +204,8 @@ void main() {
     vec3 irradiance = texture(irradianceMap, N).rgb;
     vec3 diffuse = irradiance * diffuseAlbedo;
 
-    float envMapDim = float(textureSize(prefilteredEnvMap, 0).s);
-    float MAX_REFLECTION_LOD = log2(envMapDim);
+    float envMapDim = float(textureSize(prefilteredEnvMap, 0).x);
+    float MAX_REFLECTION_LOD = floor(log2(envMapDim))+1;
     vec3 prelilteredColor = textureLod(prefilteredEnvMap, R, roughness * MAX_REFLECTION_LOD).rgb;
     vec2 envBRDF = texture(brdfLutTexture, vec2(max(dot(N, V), 0.0), roughness)).rg;
     vec3 specular = prelilteredColor * (F * envBRDF.x + envBRDF.y);
