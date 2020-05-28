@@ -24,6 +24,8 @@ void ym::CubeMapRenderer::init(SwapChain* swapChain, uint32_t threadID, RenderPa
 {
 	this->swapChain = swapChain;
 	this->threadID = threadID;
+	YM_LOG_INFO("Started Cubemap renderer with thread id {}.", threadID);
+
 	this->commandPool.init(CommandPool::Queue::GRAPHICS, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 	this->commandBuffers = this->commandPool.createCommandBuffers(this->swapChain->getNumImages(), VK_COMMAND_BUFFER_LEVEL_SECONDARY);
 

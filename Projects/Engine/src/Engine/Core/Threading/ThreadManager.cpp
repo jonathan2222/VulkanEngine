@@ -113,7 +113,7 @@ void ThreadManager::Thread::wait()
 
 bool ThreadManager::Thread::isQueueEmpty()
 {
-	/*std::lock_guard<std::mutex> lock(this->mutex);*/
+	std::lock_guard<std::mutex> lock(this->mutex);
 	return this->queue.empty();
 }
 

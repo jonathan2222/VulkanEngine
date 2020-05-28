@@ -18,7 +18,9 @@
 	#define YM_LOG_CRITICAL(...) SPDLOG_CRITICAL(__VA_ARGS__)
 	#define YM_LOG_SUCCESS(...) SPDLOG_INFO(__VA_ARGS__)
 #else
-	#define YM_LOG_INIT()
+	#define YM_LOG_INIT() \
+		spdlog::set_level(spdlog::level::info); \
+		spdlog::set_pattern("%^[%H:%M:%S.%e] [%s:%#] %v%$")
 	// TODO: Should this be empty?
 	#define YM_LOG_INFO(...) SPDLOG_INFO(__VA_ARGS__)
 	#define YM_LOG_WARN(...)

@@ -15,6 +15,7 @@ std::vector<const char*> ym::VulkanInstance::validationLayers = {
 
 std::vector<const char*> ym::VulkanInstance::deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	//VK_NV_MESH_SHADER_EXTENSION_NAME
 };
 
 ym::VulkanInstance::~VulkanInstance()
@@ -272,7 +273,7 @@ void ym::VulkanInstance::createLogicalDevice(VkPhysicalDeviceFeatures deviceFeat
 		queueCreateInfo.pQueuePriorities = &queuePriority;
 		queueCreateInfos.push_back(queueCreateInfo);
 	}
-
+	
 	VkDeviceCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());

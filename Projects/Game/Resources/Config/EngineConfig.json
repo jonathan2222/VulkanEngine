@@ -1,7 +1,7 @@
 {
   "Display": {
-    "defaultWidth": 1280,
-    "defaultHeight": 720,
+    "defaultWidth": 1920,
+    "defaultHeight": 1080,
     "fullscreen": false,
     "vsync": true,
     "title": "Vulkan Engine"

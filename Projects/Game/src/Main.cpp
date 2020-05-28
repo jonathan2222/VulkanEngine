@@ -2,6 +2,7 @@
 #include "Engine/EntryPoint.h"
 
 #include "SandboxLayer.h"
+#include "TestLayer.h"
 
 class Application : public ym::App
 {
@@ -19,6 +20,7 @@ public:
 	void start() override
 	{
 		this->layerManager->push(new SandboxLayer());
+		//this->layerManager->push(new TestLayer());
 	}
 };
 

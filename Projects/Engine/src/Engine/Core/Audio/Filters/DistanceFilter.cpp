@@ -22,13 +22,19 @@ std::pair<float, float> ym::DistanceFilter::process(SoundData* data, float left,
 		return nMin + (x - min) * (nMax - nMin) / (max - min);
 	};
 
+	auto mix = [](float a, float b, float t) -> float {
+		return a * (1.f - t) + b * t;
+	};
+
 	glm::vec3 receiverToSource = data->sourcePos - data->receiverPos;
 	float distance = glm::length(receiverToSource);
-	float attenuation = distance <= 0.000001f ? 0.f : 1.f / (distance * distance);
+	float attenuation = distance * distance;
+	attenuation = glm::min(attenuation <= 0.000001f ? 0.f : 1.f / attenuation, 1.f);
 
-	// Angle from left to right [0, pi]
+	// Calculate angle from left to right [0, pi]
 	receiverToSource = glm::normalize(receiverToSource);
-	float angle = glm::orientedAngle(receiverToSource, data->receiverLeft, data->receiverUp);
+	float cosAngle = glm::clamp(glm::dot(receiverToSource, data->receiverLeft), -1.f, 1.f);
+	float angle = glm::acos(cosAngle);
 
 	// Map angle to [0, pi/2]
 	constexpr float pi = glm::pi<float>();
