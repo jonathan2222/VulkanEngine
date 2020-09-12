@@ -38,7 +38,7 @@ private:
 
 	ym::Texture* environmentMap;
 
-	/*
+	
 	ym::Sound* cameraLockSound;
 	ym::Sound* cameraUnlockSound;
 	ym::Sound* ambientSound;
@@ -48,7 +48,7 @@ private:
 	ym::Sound* crowdSound;
 	ym::Sound* helloSound1;
 	ym::Sound* helloSound2;
-	*/
+	
 
 	std::vector<ym::GameObject*> treesObjects;
 	ym::GameObject* watterBottleObject;

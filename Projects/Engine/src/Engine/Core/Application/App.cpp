@@ -38,7 +38,7 @@ ym::App::App()
 	input->init();
 
 	this->vulkanInstance = VulkanInstance::get();
-	this->vulkanInstance->init();
+	this->vulkanInstance->init(VK_API_VERSION_1_2);
 
 	this->commandPools.init();
 

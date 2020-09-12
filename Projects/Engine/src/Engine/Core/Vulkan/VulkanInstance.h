@@ -21,7 +21,7 @@ namespace ym
 		// Get the instance of the class Instance.
 		static VulkanInstance* get();
 		
-		void init();
+		void init(uint32_t version);
 		void destroy();
 
 		SwapChainSupportDetails getSwapChainSupportDetails();
@@ -37,10 +37,12 @@ namespace ym
 		VulkanQueue getTransferQueue() const { return this->transferQueue; }
 		VulkanQueue getComputeQueue() const { return this->computeQueue; }
 
+		uint32_t getVersion() const { return this->version; }
+
 	private:
 		VulkanInstance();
 
-		void createInstance(std::vector<const char*> additionalInstanceExtensions);
+		void createInstance(uint32_t version, std::vector<const char*> additionalInstanceExtensions);
 		std::vector<const char*> getRequiredExtensions(std::vector<const char*> additionalInstanceExtensions);
 
 		void createSurface();
@@ -63,11 +65,16 @@ namespace ym
 		void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 		void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& debugInfo);
 
+		static std::string SeverityLevelToString(VkDebugUtilsMessageSeverityFlagBitsEXT level);
+		static std::string MessageTypeToString(VkDebugUtilsMessageTypeFlagsEXT type);
+
 	private:
 		static std::vector<const char*> deviceExtensions;
 		
 		bool enableValidationLayers;
 		static std::vector<const char*> validationLayers;
+
+		uint32_t version;
 
 		VkInstance instance;
 		VkDebugUtilsMessengerEXT debugMessenger;

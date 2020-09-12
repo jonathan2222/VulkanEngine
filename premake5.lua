@@ -22,7 +22,7 @@ workspace "VulkanEngine"
 
 OUTPUT_DIR = "%{cfg.buildcfg}_%{cfg.system}_%{cfg.architecture}"
 
-VULKAN_DIR = "C:/VulkanSDK/1.2.131.2"
+VULKAN_DIR = "C:/VulkanSDK/1.2.148.1"
 
 -- ========================================== GLFW ==========================================
 

@@ -56,7 +56,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 
 	renderer->setActiveCamera(&this->camera);
 
-	/*this->cameraLockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOff.mp3");
+	this->cameraLockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOff.mp3");
 	this->cameraLockSound->setVolume(0.1f);
 	this->cameraUnlockSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "/Audio/SoundEffects/ButtonOn.mp3");
 	this->cameraUnlockSound->setVolume(0.1f);
@@ -69,7 +69,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	this->music->setVolume(0.018f);
 	this->music->setLoop(true);
 	this->music->addFilter(new ym::LowpassFilter());
-	this->music->play();*/
+	this->music->play();
 	//this->music = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "/Audio/Music/DunnoJBPet.mp3", ym::PCM::Func::NORMAL);
 
 	// Cube
@@ -86,13 +86,13 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	transformChest = glm::rotate(glm::mat4(1.f), glm::pi<float>() / 4.f, { 0.f, 1.f, 0.f });
 	transformChest = glm::translate(glm::mat4(1.0f), { -4.0f, 0.f, 3.f }) * transformChest;
 	this->chestObject = ym::ObjectManager::get()->createGameObject(transformChest, &this->chestModel);
-	/*this->chestSound = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "Audio/SoundEffects/ButtonOff.mp3");
+	this->chestSound = ym::AudioSystem::get()->createStream(YM_ASSETS_FILE_PATH + "Audio/SoundEffects/ButtonOff.mp3");
 	this->chestSound->setLoop(true);
 	this->chestSound->addFilter(new ym::EchoFilter());
 	this->chestSound->addFilter(new ym::DistanceFilter());
 	this->chestSound->addFilter(new ym::LowpassFilter());
 	this->chestSound->setVolume(0.4f);
-	this->chestSound->play();*/
+	this->chestSound->play();
 
 	//ym::ObjectManager::get()->createGameObject(glm::mat4(1.f), &this->terrain2Model);
 	this->fortObject = ym::ObjectManager::get()->createGameObject(glm::mat4(1.f), &this->fortModel);
@@ -100,7 +100,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	glm::mat4 transformCrate(1.0f);
 	transformCrate = glm::translate(glm::mat4(1.0f), { 3.0f, 0.f, 2.f }) * transformCrate;
 	this->woodenCrateObject = ym::ObjectManager::get()->createGameObject(transformCrate, &this->woodenCrateModel);
-	/*this->crateSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "Audio/SoundEffects/SlidingDoor.mp3");
+	this->crateSound = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "Audio/SoundEffects/SlidingDoor.mp3");
 	this->crateSound->setLoop(false);
 	this->crateSound->addFilter(new ym::DistanceFilter());
 	this->crateSound->addFilter(new ym::LowpassFilter());
@@ -112,7 +112,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 	this->crowdSound->addFilter(new ym::DistanceFilter());
 	this->crowdSound->addFilter(new ym::LowpassFilter());
 	this->crowdSound->setVolume(0.1f);
-	this->crowdSound->play();*/
+	this->crowdSound->play();
 
 	{ // Dragon
 		glm::mat4 transform(1.f);
@@ -124,7 +124,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 		glm::mat4 transform(1.f);
 		transform = glm::translate(glm::mat4(1.0f), { 0.0f, 0.f, -7.f }) * glm::rotate(glm::mat4(1.f), 0.f, { 0.f, 1.f, 0.f });
 		ym::GameObject* knightSword = ym::ObjectManager::get()->createGameObject(transform, &this->knightSwordModel);
-		/*this->helloSound1 = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "Audio/SoundEffects/Hello.mp3");
+		this->helloSound1 = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "Audio/SoundEffects/Hello.mp3");
 		glm::vec3 soundPos = knightSword->getPos() + glm::vec3(0.f, 1.6f, 0.f);
 		this->helloSound1->setSourcePosition(soundPos);
 		this->helloSound1->setLoop(true);
@@ -132,14 +132,14 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 		this->helloSound1->addFilter(new ym::LowpassFilter());
 		this->helloSound1->setVolume(0.4f);
 		this->helloSound1->play();
-		*/
+		
 	}
 
 	{ // Knight Spear
 		glm::mat4 transform(1.f);
 		transform = glm::translate(glm::mat4(1.0f), { 0.0f, 0.f, 7.f }) * glm::rotate(glm::mat4(1.f), glm::pi<float>(), { 0.f, 1.f, 0.f });
 		ym::GameObject* knightSpear = ym::ObjectManager::get()->createGameObject(transform, &this->knightSpearModel);
-		/*this->helloSound2 = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "Audio/SoundEffects/Hello.mp3");
+		this->helloSound2 = ym::AudioSystem::get()->createSound(YM_ASSETS_FILE_PATH + "Audio/SoundEffects/Hello.mp3");
 		glm::vec3 soundPos = knightSpear->getPos() + glm::vec3(0.f, 1.6f, 0.f);
 		this->helloSound2->setSourcePosition(soundPos);
 		this->helloSound2->setLoop(true);
@@ -150,7 +150,7 @@ void SandboxLayer::onStart(ym::Renderer* renderer)
 		this->helloSound2->addFilter(new ym::DistanceFilter());
 		this->helloSound2->addFilter(new ym::LowpassFilter());
 		this->helloSound2->setVolume(0.74f);
-		this->helloSound2->play();*/
+		this->helloSound2->play();
 	}
 
 	/*
@@ -186,12 +186,12 @@ void SandboxLayer::onUpdate(float dt)
 		{
 			input->centerMouse();
 			input->lockMouse();
-			//this->cameraLockSound->play();
+			this->cameraLockSound->play();
 		}
 		else
 		{
 			input->unlockMouse();
-			//this->cameraUnlockSound->play();
+			this->cameraUnlockSound->play();
 		}
 	}
 
@@ -205,7 +205,7 @@ void SandboxLayer::onUpdate(float dt)
 	if (input->isKeyPressed(ym::Key::ESCAPE))
 		this->terminate();
 
-	/*
+	
 	if (input->getKeyState(ym::Key::KP_1) == ym::KeyState::FIRST_PRESSED)
 	{
 		this->music->play();
@@ -235,7 +235,7 @@ void SandboxLayer::onUpdate(float dt)
 	{
 		this->music->applyVolume(-0.05f);
 		YM_LOG_INFO("Changed volume to {}", this->music->getVolume());
-	}*/
+	}
 
 	// ---------- Update game objects ----------
 
@@ -279,7 +279,7 @@ void SandboxLayer::onUpdate(float dt)
 	}
 
 	// Update sound user data.
-	/*
+	
 	this->chestSound->setSourcePosition(this->chestObject->getPos());
 	this->chestSound->setReceiver(&this->camera);
 
@@ -296,14 +296,15 @@ void SandboxLayer::onUpdate(float dt)
 	{
 		this->crateSound->play();
 		t = 0;
-	}*/
+	}
 }
 
 void SandboxLayer::onRender(ym::Renderer* renderer)
 {
 	renderer->begin();
 
-	//ImGui::ShowDemoWindow();
+	ImGui::ShowDemoWindow();
+	ImGui::ShowAboutWindow();
 
 	ym::AudioSystem::get()->drawAudioSettings();
 

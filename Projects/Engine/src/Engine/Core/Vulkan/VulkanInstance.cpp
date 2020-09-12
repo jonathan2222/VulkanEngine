@@ -10,7 +10,7 @@
 
 // Initilize static validation layers
 std::vector<const char*> ym::VulkanInstance::validationLayers = {
-	"VK_LAYER_LUNARG_standard_validation"
+	"VK_LAYER_KHRONOS_validation"//"VK_LAYER_LUNARG_standard_validation"
 };
 
 std::vector<const char*> ym::VulkanInstance::deviceExtensions = {
@@ -28,12 +28,13 @@ ym::VulkanInstance* ym::VulkanInstance::get()
 	return &instance;
 }
 
-void ym::VulkanInstance::init()
+void ym::VulkanInstance::init(uint32_t version)
 {
+	this->version = version;
 	this->enableValidationLayers = Config::get()->fetch<bool>("Debuglayer/active");
 
 	std::vector<const char*> additionalInstanceExtensions = {};
-	createInstance(additionalInstanceExtensions);
+	createInstance(this->version, additionalInstanceExtensions);
 	createSurface();
 	pickPhysicalDevice();
 
@@ -45,6 +46,8 @@ void ym::VulkanInstance::init()
 	//deviceFeatures.pipelineStatisticsQuery = VK_TRUE;
 	deviceFeatures.multiDrawIndirect = VK_TRUE;
 	createLogicalDevice(deviceFeatures);
+
+	YM_LOG_INFO("Created Vulkan instance with API version: {}.{}.{}", VK_VERSION_MAJOR(this->version), VK_VERSION_MINOR(this->version), VK_VERSION_PATCH(this->version));
 }
 
 void ym::VulkanInstance::destroy()
@@ -107,15 +110,15 @@ ym::VulkanInstance::VulkanInstance()
 	this->logicalDevice = VK_NULL_HANDLE;
 }
 
-void ym::VulkanInstance::createInstance(std::vector<const char*> additionalInstanceExtensions)
+void ym::VulkanInstance::createInstance(uint32_t version, std::vector<const char*> additionalInstanceExtensions)
 {
 	VkApplicationInfo appInfo = {};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pApplicationName = "VulkanEngine";
-	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+	appInfo.applicationVersion = version;
 	appInfo.pEngineName = "VulkanEngine";
-	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+	appInfo.engineVersion = version;
+	appInfo.apiVersion = version;
 
 	// Fetch extensions
 	std::vector<const char*> extensionNames = getRequiredExtensions(additionalInstanceExtensions);
@@ -348,7 +351,18 @@ bool ym::VulkanInstance::checkValidationLayerSupport(const std::vector<const cha
 
 VKAPI_ATTR VkBool32 VKAPI_CALL ym::VulkanInstance::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
-	YM_LOG_ERROR("validation layer: {0}", pCallbackData->pMessage);
+	std::string severityLevel = SeverityLevelToString(messageSeverity);
+	std::string type = MessageTypeToString(messageType);
+
+	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+		YM_LOG_INFO("[{0}][{1}] Validation layer: {2}", type, severityLevel, pCallbackData->pMessage);
+	else if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+		YM_LOG_INFO("[{0}][{1}] Validation layer: {2}", type, severityLevel, pCallbackData->pMessage);
+	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+		YM_LOG_WARN("[{0}][{1}] Validation layer: {2}", type, severityLevel, pCallbackData->pMessage);
+	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+		YM_LOG_ERROR("[{0}][{1}] Validation layer: {2}", type, severityLevel, pCallbackData->pMessage);
+
 	/*YM_LOG_ERROR("cmdBufLabelCount: {0}", pCallbackData->cmdBufLabelCount);
 	YM_LOG_ERROR("objectCount: {0}", pCallbackData->objectCount);
 	for (uint32_t i = 0; i < pCallbackData->objectCount; i++)
@@ -389,4 +403,37 @@ void ym::VulkanInstance::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerC
 	debugInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 	debugInfo.pfnUserCallback = debugCallback;
 	debugInfo.pUserData = nullptr; // Optional
+}
+
+std::string ym::VulkanInstance::SeverityLevelToString(VkDebugUtilsMessageSeverityFlagBitsEXT level)
+{
+	std::string res;
+	if (level & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+		res += "VERBOSE";
+	if (level & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+		res += (res.empty() ? "" : "|") + std::string("INFO");
+	if (level & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+		res += (res.empty() ? "" : "|") + std::string("WARNING");
+	if (level & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+		res += (res.empty() ? "" : "|") + std::string("ERROR");
+	return res;
+}
+
+std::string ym::VulkanInstance::MessageTypeToString(VkDebugUtilsMessageTypeFlagsEXT type)
+{
+	switch (type)
+	{
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT:
+		return "GENERAL";
+		break;
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT:
+		return "VALIDATION";
+		break;
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT:
+		return "PERFORMANCE";
+		break;
+	default:
+		return "UNKNOWN_TYPE";
+		break;
+	}
 }
